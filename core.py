@@ -4,8 +4,20 @@ import copy, json, math, os, re, shutil, subprocess, tempfile, unicodedata, uuid
 from pathlib import Path
 
 VERSION = 2
-FILTERS = {'Original': '', 'Quente': 'eq=saturation=1.08:gamma_r=1.04:gamma_b=0.97',
-           'Contraste': 'eq=contrast=1.12:saturation=1.06', 'Preto e branco': 'hue=s=0'}
+FILTERS = {
+    'Original': '',
+    'Quente': 'eq=saturation=1.08:gamma_r=1.04:gamma_b=0.97',
+    'Frio': 'eq=saturation=1.03:gamma_b=1.06:gamma_r=0.95',
+    'Vívido': 'eq=saturation=1.25:contrast=1.06',
+    'Desbotado': 'eq=saturation=0.8:contrast=0.93:brightness=0.02',
+    'Contraste': 'eq=contrast=1.12:saturation=1.06',
+    'Nítido': 'unsharp=5:5:0.8:5:5:0.0',
+    'Suave': 'gblur=sigma=0.8',
+    'Vinheta': 'vignette=PI/4',
+    'Sépia': 'colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131:0',
+    'Cinema': 'curves=preset=medium_contrast,eq=saturation=1.05',
+    'Preto e branco': 'hue=s=0',
+}
 CAPTION_STYLES = ['Realce', 'Pop', 'Contorno']
 CORNERS = {'Superior direito': 'W-w-24:24', 'Superior esquerdo': '24:24',
            'Inferior direito': 'W-w-24:H-h-24', 'Inferior esquerdo': '24:H-h-24'}
