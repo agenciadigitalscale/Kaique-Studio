@@ -102,7 +102,7 @@ class Studio(QMainWindow):
     def p(self,value):self.doc['style']={k:copy.deepcopy(value[k]) for k in native.STYLE_KEYS}
     def build(self):
         center=QWidget();self.setCentralWidget(center);main=QVBoxLayout(center)
-        main.addWidget(row(label('KAIQUE / STUDIO','brand'),label('0.5 • TAKES INDEPENDENTES'),button('Novo',self.new),button('Abrir',self.load),button('Salvar',self.save),button('Ajuda',self.help),button('Exportar MP4',lambda:self.export(False),True)))
+        main.addWidget(row(label('KAIQUE / STUDIO','brand'),label('0.6 • BIBLIOTECA VIVA'),button('Novo',self.new),button('Abrir',self.load),button('Salvar',self.save),button('Ajuda',self.help),button('Exportar MP4',lambda:self.export(False),True)))
         self.workspace=QWidget();layout=QVBoxLayout(self.workspace);main.addWidget(self.workspace,1)
         split=QSplitter(Qt.Horizontal);layout.addWidget(split,1)
         left,l=panel();l.addWidget(button('+ Importar vários takes',self.import_takes,True));self.clips=ClipList();self.clips.currentRowChanged.connect(self.select);self.clips.moved.connect(self.move);l.addWidget(self.clips,1)
