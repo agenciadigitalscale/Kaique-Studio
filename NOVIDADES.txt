@@ -32,7 +32,17 @@ COMO ATUALIZAR
 - Seus projetos e sua biblioteca das versões anteriores continuam válidos
   (projeto antigo com um sticker vira uma sobreposição automaticamente).
 
+CANAL DE ATUALIZAÇÃO (a base do "app sempre novo")
+- Botão "⟳ Buscar novidades" na Biblioteca: o Studio consulta um catálogo online
+  e baixa os efeitos, presets e ícones novos SEM reinstalar o programa.
+- É incremental: só baixa o que você ainda não tem, e falha de um item não
+  atrapalha os outros. O que vem do canal fica marcado como novidade no acervo.
+- O catálogo vai ser publicado no DS HUB (mesma infraestrutura da futura ponte).
+  Enquanto ele não existir, o botão avisa com jeito, sem erro na tela.
+
 AINDA PENDENTE (próximas etapas)
+- Publicar o catálogo de novidades no DS HUB (o outro lado do canal).
+- Ferramentas de IA (cortes sugeridos, legendas inteligentes) — próxima onda.
 - Memes de VÍDEO como sobreposição (hoje a sobreposição é imagem estática).
 - Reprodução contínua sem "pulos" ao trocar de clipe.
 - Ponte com o DS HUB (puxar a fila de edição e entregar o export).

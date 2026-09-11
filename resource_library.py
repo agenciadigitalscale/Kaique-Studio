@@ -1,11 +1,11 @@
 """Interface Qt da biblioteca. A lógica do acervo vive em `library.py` (sem Qt)."""
 from pathlib import Path
 from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QDesktopServices, QGuiApplication
 from PySide6.QtWidgets import (QDialog,QVBoxLayout,QHBoxLayout,QLineEdit,QComboBox,
     QListWidget,QListWidgetItem,QPushButton,QLabel,QFileDialog,QMessageBox,QInputDialog,QCheckBox)
 from PySide6.QtMultimedia import QMediaPlayer,QAudioOutput
-import core
+import core, updates
 # Reexporta o núcleo para quem já importava daqui (app.py, testes antigos).
 from library import Catalog, KINDS, CATEGORIES, EXTENSIONS, myinstants_url, apply_preset, all_sources, search_url
 
@@ -32,6 +32,7 @@ class LibraryDialog(QDialog):
         for kind,name in all_sources():self.source.addItem(f'{kind} · {name}',(kind,name))
         online_row.addWidget(self.source,1)
         self.online_btn=QPushButton('Abrir busca ↗');self.online_btn.clicked.connect(self.online);online_row.addWidget(self.online_btn)
+        self.update_btn=QPushButton('⟳ Buscar novidades');self.update_btn.setToolTip('Baixa efeitos, presets e ícones novos publicados para o Studio');self.update_btn.clicked.connect(self.fetch_updates);online_row.addWidget(self.update_btn)
         layout.addLayout(online_row)
         note=QLabel('A busca online abre a fonte no navegador. Baixe o arquivo e importe aqui — as fontes listadas oferecem conteúdo de uso livre/CC. Confira sempre a licença na página antes de usar em vídeo de cliente.')
         note.setWordWrap(True);layout.addWidget(note)
@@ -87,6 +88,25 @@ class LibraryDialog(QDialog):
             if not ok or not query.strip():return
         try:QDesktopServices.openUrl(QUrl(search_url(kind,query,source)))
         except Exception as exc:QMessageBox.warning(self,'Busca',str(exc))
+    def fetch_updates(self):
+        """Consulta o canal e instala os pacotes novos. Roda com cursor de espera;
+        falha de rede/canal ausente vira aviso amigável, nunca tela de erro."""
+        self.update_btn.setEnabled(False);QGuiApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            result=updates.sync(self.catalog)
+        except Exception as exc:
+            QMessageBox.information(self,'Novidades','Não foi possível buscar novidades agora.\n\n'
+                'Verifique sua conexão e tente mais tarde — o canal de conteúdo do Studio ainda '
+                'pode não estar publicado.\n\nDetalhe: '+str(exc))
+            return
+        finally:
+            QGuiApplication.restoreOverrideCursor();self.update_btn.setEnabled(True)
+        self.refresh()
+        if result['added']:
+            extra=f"\n\n{len(result['errors'])} não vieram (rede)." if result['errors'] else ''
+            QMessageBox.information(self,'Novidades',f"Chegaram {result['added']} novidades ao seu acervo!{extra}")
+        else:
+            QMessageBox.information(self,'Novidades','Você já está com tudo em dia — nenhuma novidade nova.')
     def apply(self):
         e=self.selected();s=self.studio
         if not e:return

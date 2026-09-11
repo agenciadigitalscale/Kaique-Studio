@@ -248,3 +248,48 @@ class Catalog:
         else:
             favorites.append(identifier)
         self.save()
+
+    # ── Recebimento de pacotes do canal de atualização ─────────────────────
+    # O `updates.py` decide O QUE baixar; o Catalog é quem GRAVA. Os ids dos
+    # pacotes convivem no mesmo espaço dos itens/presets: um pacote com id já
+    # presente é considerado "já instalado" e não entra de novo.
+    def installed_ids(self):
+        """Todo id que o acervo já conhece — bundled, do usuário e de atualização.
+        É a base do incremental: o que já está aqui não se rebaixa."""
+        ids = set()
+        for e in self.defaults + self.data['items']:
+            ids.add(e.get('id'))
+        for p in self.default_presets + self.data['presets']:
+            ids.add(p.get('id'))
+        return ids
+
+    def add_update_asset(self, pack, data):
+        """Grava o arquivo de um pacote (som, ícone, LUT…) no acervo do usuário.
+
+        Igual ao `add`, mas a origem é o download e não um arquivo da máquina —
+        por isso guarda `source='update'`: dá para distinguir na tela o que veio
+        do canal do que o usuário importou à mão.
+        """
+        target = self.root / (pack['id'] + str(pack['ext']).lower())
+        target.write_bytes(data)
+        try:
+            entry = dict(id=pack['id'], title=pack['title'], kind=pack['kind'],
+                         category=pack.get('category', 'Outros'),
+                         path=str(target.resolve()), source='update')
+            self.data['items'].append(entry)
+            self.save()
+        except Exception:
+            self.data['items'] = [e for e in self.data['items'] if e is not entry]
+            target.unlink(missing_ok=True)
+            raise
+        return entry
+
+    def add_update_preset(self, pack):
+        """Instala um preset vindo do canal. O combo já veio embutido e validado
+        no manifesto (`updates.parse_manifest`); aqui ele só entra no acervo."""
+        preset = dict(pack['preset'])
+        preset.setdefault('id', pack['id'])
+        preset['source'] = 'update'
+        self.data['presets'].append(preset)
+        self.save()
+        return preset
