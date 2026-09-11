@@ -1,0 +1,87 @@
+KAIQUE STUDIO 0.5 — TIMELINE NATIVA / ALPHA
+
+INSTALAR
+Extraia TODO o ZIP para uma pasta nova pelo WinRAR > Extrair para.
+Abra essa pasta pelo Explorador do Windows, fora do WinRAR.
+Execute INSTALAR.bat; após concluir, execute INICIAR.bat.
+Python 3.11 continua necessário. Preserve as pastas das versões anteriores.
+
+PRIMEIRO TESTE
+1. Importe dois ou três takes curtos. Aguarde miniaturas e leitura do áudio.
+2. Arraste os takes pela lista ou pelo centro dos blocos na timeline.
+3. Arraste as bordas dos blocos para aparar. Para precisão, use a aba Cortes.
+4. Clique no ponto desejado e pressione Ctrl+B para dividir.
+5. Transcreva na aba Legendas; revise as palavras do take selecionado.
+6. Reordene novamente: cortes e palavras acompanham os takes.
+7. Gere a prévia com efeitos e exporte um MP4 de teste.
+
+ATALHOS
+Ctrl+B: dividir no cursor.
+Ctrl+Z: desfazer (até 30 estados na sessão).
+Ctrl+S: salvar projeto.
+As setas na lista também mudam a ordem. Remover exclui só da edição.
+Restaurar take inteiro recupera os limites do arquivo daquele bloco.
+
+TIMELINE
+Cada bloco guarda seu arquivo original, entrada, saída e palavras.
+Reordenar não reconstrói um vídeo nem apaga a transcrição.
+Miniaturas são três amostras por arquivo; não são um quadro exato sob o cursor.
+A onda de áudio é uma representação resumida, recortada junto com o clipe.
+Zoom da timeline amplia os blocos e permite rolar horizontalmente.
+As faixas Voz, Legendas, Música e Efeitos são visualizações separadas.
+Só os blocos de vídeo são arrastáveis nesta versão. Música e efeitos continuam
+com posição definida pelo painel/biblioteca, não por arraste nessas faixas.
+
+PRÉVIA LEVE
+Selecione um take e clique em Criar prévia leve.
+É criada uma cópia de até 640 pixels para reproduzir esse take.
+A exportação usa os arquivos originais, não essa cópia.
+O player pode ter pequena interrupção ao mudar de arquivo; reprodução sem
+interrupções e efeitos em tempo real ainda não estão implementados.
+Prévia com efeitos renderiza até dez segundos da edição final.
+
+LEGENDAS E COMANDOS
+Palavras e tempos da tabela referem-se ao arquivo original do take selecionado.
+Salvar palavras confirma os ajustes em memória; Ctrl+S grava o projeto.
+Transcrever todos os pendentes processa os blocos sem palavras.
+A primeira transcrição baixa um modelo de fala. A transcrição usa CPU.
+Uma fonte sem fala pode retornar aviso; deixe esse take sem palavras.
+Comandos predefinidos continuam disponíveis, por exemplo:
+cortes e legenda; filtro quente
+Transcreva antes de solicitar cortes. A sugestão preserva blocos sem palavras,
+mas ainda pode cortar imagens de apoio em takes que também tenham fala.
+Não há IA generativa conectada nem seleção visual dos melhores takes.
+
+RECURSOS
+Biblioteca de recursos mantém o acervo local, favoritos, sons e LUTs.
+Myinstants abre no navegador; os arquivos são baixados e importados manualmente.
+Transições preta/branca e filtros são globais, aplicados na exportação.
+Música e efeitos sonoros usam tempos da edição final: revise depois de aparar,
+remover ou mudar a ordem. Eles não ficam vinculados ao take automaticamente.
+Efeitos fora da duração final impedem exportação até serem ajustados/removidos.
+
+PROJETOS ANTIGOS
+Abrir aceita projetos 0.2–0.4 e converte os trechos mantidos em blocos.
+Essa importação usa a sequência antiga como fonte; não recupera automaticamente
+os arquivos individuais anteriores à montagem. Cortes e palavras são preservados.
+Salve o resultado como um novo JSON da versão 0.5. O arquivo antigo não é alterado
+pela importação. Projetos 0.1 não são suportados.
+
+ARQUIVOS E RECUPERAÇÃO
+O projeto guarda caminhos dos originais: não mova os arquivos durante a edição.
+Miniaturas e cópias leves: %LOCALAPPDATA%\KaiqueStudio\timeline.
+Recuperação automática: %LOCALAPPDATA%\KaiqueStudio\recuperacao-v05.json.
+Biblioteca local: %LOCALAPPDATA%\KaiqueStudio\biblioteca.
+Guarde os vídeos originais, recursos e JSON juntos em seu backup.
+Se uma cópia leve faltar, o player volta ao original. Miniaturas ausentes não
+impedem exportação, mas não são reconstruídas automaticamente nesta alpha.
+
+LIMITES
+Alpha: instalação e reprodução no Windows do Kaique ainda precisam de teste.
+Não há cancelamento das tarefas. Aguarde terminar antes de fechar.
+Exportação em CPU, com arquivos intermediários e recodificação; pode demorar.
+Saída a 30 fps, lado maior até 1920 pixels, proporção do primeiro clipe.
+Outras proporções recebem barras. Use fontes SDR; não há gerenciamento HDR.
+Não há múltiplas camadas de vídeo, edição por texto, transições sobrepostas,
+keyframes, templates comerciais ou integração DS Hub.
+Ainda não há benchmark de velocidade no computador do Kaique.

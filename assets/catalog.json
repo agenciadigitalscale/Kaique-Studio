@@ -1,0 +1,154 @@
+[
+  {
+    "id": "builtin-pop",
+    "title": "Pop curto",
+    "kind": "Efeitos sonoros",
+    "category": "Interface",
+    "path": "pop.wav",
+    "description": "Efeito sintetizado para o Kaique Studio. Ouça antes de aplicar; ajuste a posição na edição final."
+  },
+  {
+    "id": "builtin-click",
+    "title": "Clique seco",
+    "kind": "Efeitos sonoros",
+    "category": "Interface",
+    "path": "click.wav",
+    "description": "Efeito sintetizado para o Kaique Studio. Ouça antes de aplicar; ajuste a posição na edição final."
+  },
+  {
+    "id": "builtin-whoosh",
+    "title": "Whoosh suave",
+    "kind": "Efeitos sonoros",
+    "category": "Movimento",
+    "path": "whoosh.wav",
+    "description": "Efeito sintetizado para o Kaique Studio. Ouça antes de aplicar; ajuste a posição na edição final."
+  },
+  {
+    "id": "builtin-impact",
+    "title": "Impacto grave",
+    "kind": "Efeitos sonoros",
+    "category": "Impacto",
+    "path": "impact.wav",
+    "description": "Efeito sintetizado para o Kaique Studio. Ouça antes de aplicar; ajuste a posição na edição final."
+  },
+  {
+    "id": "builtin-rise",
+    "title": "Subida de tensão",
+    "kind": "Efeitos sonoros",
+    "category": "Suspense",
+    "path": "rise.wav",
+    "description": "Efeito sintetizado para o Kaique Studio. Ouça antes de aplicar; ajuste a posição na edição final."
+  },
+  {
+    "id": "builtin-ding",
+    "title": "Ding de destaque",
+    "kind": "Efeitos sonoros",
+    "category": "Reações",
+    "path": "ding.wav",
+    "description": "Efeito sintetizado para o Kaique Studio. Ouça antes de aplicar; ajuste a posição na edição final."
+  },
+  {
+    "id": "builtin-error",
+    "title": "Alerta duplo",
+    "kind": "Efeitos sonoros",
+    "category": "Reações",
+    "path": "error.wav",
+    "description": "Efeito sintetizado para o Kaique Studio. Ouça antes de aplicar; ajuste a posição na edição final."
+  },
+  {
+    "id": "builtin-shimmer",
+    "title": "Brilho curto",
+    "kind": "Efeitos sonoros",
+    "category": "Movimento",
+    "path": "shimmer.wav",
+    "description": "Efeito sintetizado para o Kaique Studio. Ouça antes de aplicar; ajuste a posição na edição final."
+  },
+  {
+    "id": "lut-warm",
+    "title": "Quente suave",
+    "kind": "LUTs",
+    "category": "Gastronomia",
+    "path": "warm.cube",
+    "description": "LUT própria para imagem SDR. Não é conversão de LOG/HDR. Confira pele e exposição na prévia."
+  },
+  {
+    "id": "lut-cool",
+    "title": "Frio suave",
+    "kind": "LUTs",
+    "category": "Cinemático",
+    "path": "cool.cube",
+    "description": "LUT própria para imagem SDR. Não é conversão de LOG/HDR. Confira pele e exposição na prévia."
+  },
+  {
+    "id": "lut-vivid",
+    "title": "Cor viva moderada",
+    "kind": "LUTs",
+    "category": "Natureza",
+    "path": "vivid.cube",
+    "description": "LUT própria para imagem SDR. Não é conversão de LOG/HDR. Confira pele e exposição na prévia."
+  },
+  {
+    "id": "lut-soft",
+    "title": "Contraste suave",
+    "kind": "LUTs",
+    "category": "Institucional",
+    "path": "soft.cube",
+    "description": "LUT própria para imagem SDR. Não é conversão de LOG/HDR. Confira pele e exposição na prévia."
+  },
+  {
+    "id": "transition-Nenhuma",
+    "title": "Corte seco",
+    "kind": "Transições",
+    "category": "Cinemático",
+    "value": "Nenhuma",
+    "description": "Aplicação global nas junções dos trechos mantidos. Não altera a duração nem sobrepõe clipes; áudio e legendas continuam."
+  },
+  {
+    "id": "transition-Preto",
+    "title": "Passagem pelo preto",
+    "kind": "Transições",
+    "category": "Cinemático",
+    "value": "Preto",
+    "description": "Aplicação global nas junções dos trechos mantidos. Não altera a duração nem sobrepõe clipes; áudio e legendas continuam."
+  },
+  {
+    "id": "transition-Branco",
+    "title": "Passagem pelo branco",
+    "kind": "Transições",
+    "category": "Cinemático",
+    "value": "Branco",
+    "description": "Aplicação global nas junções dos trechos mantidos. Não altera a duração nem sobrepõe clipes; áudio e legendas continuam."
+  },
+  {
+    "id": "filter-Original",
+    "title": "Original",
+    "kind": "Filtros",
+    "category": "Outros",
+    "value": "Original",
+    "description": "Filtro de imagem aplicado à sequência inteira. Confira na prévia renderizada."
+  },
+  {
+    "id": "filter-Quente",
+    "title": "Quente",
+    "kind": "Filtros",
+    "category": "Outros",
+    "value": "Quente",
+    "description": "Filtro de imagem aplicado à sequência inteira. Confira na prévia renderizada."
+  },
+  {
+    "id": "filter-Contraste",
+    "title": "Contraste",
+    "kind": "Filtros",
+    "category": "Outros",
+    "value": "Contraste",
+    "description": "Filtro de imagem aplicado à sequência inteira. Confira na prévia renderizada."
+  },
+  {
+    "id": "filter-Preto e branco",
+    "title": "Preto e branco",
+    "kind": "Filtros",
+    "category": "Outros",
+    "value": "Preto e branco",
+    "description": "Filtro de imagem aplicado à sequência inteira. Confira na prévia renderizada."
+  }
+]

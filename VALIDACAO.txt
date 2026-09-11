@@ -1,0 +1,11 @@
+VALIDAÇÃO 0.5
+A suíte de 14 testes passou no Linux durante a implementação.
+Após completar a importação legada, os 3 testes nativos foram executados
+novamente em 11/09/2026 e passaram, incluindo migração de cortes e palavras,
+miniaturas, waveform, cópia leve, exportação e ordem visual de quadros.
+Interface Qt inspecionada em 1480x960. Exercitados reordenação e corte
+preservando uma palavra editada pela tabela da interface.
+Arquivos BAT verificados com CRLF reais.
+
+Ainda pendente: instalação Windows, reprodução contínua em hardware real,
+transcrição real e desempenho no PC do Kaique. Não há benchmark de velocidade.

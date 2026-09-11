@@ -1,0 +1,2 @@
+Recursos iniciais próprios do Kaique Studio: 8 sons sintetizados e 4 LUTs SDR.
+Nenhum arquivo sonoro do Myinstants nem pacote proprietário de outro editor está incluído.

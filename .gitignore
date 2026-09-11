@@ -1,0 +1,16 @@
+# Ambiente e caches — nunca versionar
+.venv/
+__pycache__/
+*.pyc
+instalacao.log
+
+# Saídas de teste e mídia de trabalho
+*.mp4
+*.mkv
+*.tmp
+/teste_*/
+kaique_*/
+native_*/
+
+# Dados locais do app (ficam em %LOCALAPPDATA%\KaiqueStudio, mas por segurança)
+recuperacao-v05.json
