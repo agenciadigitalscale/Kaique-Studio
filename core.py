@@ -7,12 +7,25 @@ VERSION = 2
 FILTERS = {'Original': '', 'Quente': 'eq=saturation=1.08:gamma_r=1.04:gamma_b=0.97',
            'Contraste': 'eq=contrast=1.12:saturation=1.06', 'Preto e branco': 'hue=s=0'}
 CAPTION_STYLES = ['Realce', 'Pop', 'Contorno']
+CORNERS = {'Superior direito': 'W-w-24:24', 'Superior esquerdo': '24:24',
+           'Inferior direito': 'W-w-24:H-h-24', 'Inferior esquerdo': '24:H-h-24'}
+
+
+def overlays_of(p):
+    """Lista efetiva de sobreposições: as novas `overlays` mais o `sticker`
+    único legado dobrado como uma — projeto antigo (um sticker) segue valendo
+    com uma linha, sem migração de dado."""
+    items = [dict(o) for o in p.get('overlays', [])]
+    if p.get('sticker') and not items:
+        items = [dict(path=p['sticker'], start=float(p.get('sticker_start', 0)),
+                      end=float(p.get('sticker_end', 5)), corner='Superior direito', width=180)]
+    return items
 
 
 def project():
     return dict(version=VERSION, id=str(uuid.uuid4()), client='', source='', duration=0,
                 width=0, height=0, takes=[], words=[], ranges=[], script='', music='', music_volume=0.15,
-                sfx=[], sticker='', sticker_start=0, sticker_end=5, lut='',
+                sfx=[], sticker='', sticker_start=0, sticker_end=5, overlays=[], lut='',
                 color='#C9FF63', font_size=22, caption_mode='Palavra ativa', caption_style='Realce', keywords='',
                 filter='Original', transition='Nenhuma', zoom=1.0, captions_enabled=True)
 
@@ -90,8 +103,17 @@ def validate(p, files=True):
             raise ValueError('Efeito sonoro não encontrado.')
         if not 0 <= float(s['time']) < length or not 0 <= float(s['volume']) <= 1:
             raise ValueError('Ajuste o tempo do efeito sonoro para a duração final.')
-    if p['sticker'] and not 0 <= float(p['sticker_start']) < float(p['sticker_end']) <= length+0.05:
-        raise ValueError('Ajuste o início/fim do sticker para a duração final.')
+    for o in overlays_of(p):
+        if files and not Path(o['path']).is_file():
+            raise ValueError('Imagem de sobreposição não encontrada: ' + o['path'])
+        if not 0 <= float(o['start']) < float(o['end']) <= length + 0.05:
+            raise ValueError('Ajuste o início/fim de uma sobreposição para a duração final.')
+        if o.get('corner', 'Superior direito') not in CORNERS:
+            raise ValueError('Posição de sobreposição inválida.')
+        if not 20 <= int(o.get('width', 180)) <= 600:
+            raise ValueError('Largura de sobreposição fora da faixa (20–600).')
+    if len(overlays_of(p)) > 8:
+        raise ValueError('Limite desta versão: 8 sobreposições por projeto.')
 
 
 def duration(p):
@@ -319,10 +341,10 @@ def render(p, destination, progress=lambda s:None, preview=False):
         for s in p['sfx']:
             sfx_inputs.append((input_index,s));input_index+=1
             args+=['-i',s['path']]
-        sticker_index=None
-        if p['sticker']:
-            sticker_index=input_index
-            args+=['-loop','1','-i',p['sticker']]
+        overlay_inputs=[]
+        for o in overlays_of(p):
+            overlay_inputs.append((input_index,o));input_index+=1
+            args+=['-loop','1','-i',o['path']]
         filters=[]
         vf=[]
         if p['zoom']>1.001:
@@ -334,9 +356,14 @@ def render(p, destination, progress=lambda s:None, preview=False):
         if p['captions_enabled'] and p['words']:
             vf.append('subtitles=captions.ass')
         filters.append('[0:v]'+(','.join(vf) or 'null')+'[basev]')
-        if sticker_index is not None:
-            filters.append(f'[{sticker_index}:v]scale=180:-1[st]')
-            filters.append(f"[basev][st]overlay=W-w-24:24:enable='between(t,{p['sticker_start']},{p['sticker_end']})':shortest=1[outv]")
+        if overlay_inputs:
+            current='[basev]'
+            for n,(idx,o) in enumerate(overlay_inputs):
+                width=int(o.get('width',180));corner=CORNERS[o.get('corner','Superior direito')]
+                filters.append(f'[{idx}:v]scale={width}:-1[ov{n}]')
+                out='[outv]' if n==len(overlay_inputs)-1 else f'[ovbase{n}]'
+                filters.append(f"{current}[ov{n}]overlay={corner}:enable='between(t,{o['start']},{o['end']})':shortest=1{out}")
+                current=out
         else:
             filters.append('[basev]null[outv]')
         labels=['[voice]'];filters.append('[0:a]anull[voice]')

@@ -129,7 +129,7 @@ class Studio(QMainWindow):
         image=QWidget();im=QVBoxLayout(image);self.look=QComboBox();self.look.addItems(core.FILTERS);im.addWidget(label('Filtro'));im.addWidget(self.look)
         self.transition=QComboBox();self.transition.addItems(['Nenhuma','Preto','Branco']);im.addWidget(label('Transição entre clipes'));im.addWidget(self.transition)
         self.volume=QSlider(Qt.Horizontal);self.volume.setRange(0,100);im.addWidget(label('Volume da música'));im.addWidget(self.volume)
-        im.addWidget(button('Remover música',lambda:self.clear_asset('music')));im.addWidget(button('Remover LUT',lambda:self.clear_asset('lut')));im.addWidget(button('Remover efeitos sonoros',lambda:self.clear_asset('sfx')))
+        im.addWidget(button('Remover música',lambda:self.clear_asset('music')));im.addWidget(button('Remover LUT',lambda:self.clear_asset('lut')));im.addWidget(button('Remover efeitos sonoros',lambda:self.clear_asset('sfx')));im.addWidget(button('Remover imagens/ícones',lambda:self.clear_asset('overlays')))
         self.effects=label('');im.addWidget(self.effects);im.addStretch();tabs.addTab(image,'Imagem/áudio')
         script=QWidget();sc=QVBoxLayout(script);self.client=QLineEdit();self.client.setPlaceholderText('Cliente / projeto');sc.addWidget(self.client);self.script=QPlainTextEdit();self.script.setPlaceholderText('Roteiro de referência');sc.addWidget(self.script);tabs.addTab(script,'Projeto')
         layout.addWidget(label('TIMELINE • arraste o centro para reordenar / bordas para aparar','title'))
@@ -308,7 +308,7 @@ class Studio(QMainWindow):
                 else:p['style'][key]=value
         self.mutate(apply)
     def clear_asset(self,key):
-        try:self.sync();self.checkpoint();self.doc['style'][key]=[] if key=='sfx' else '';self.restore_ui()
+        try:self.sync();self.checkpoint();self.doc['style'][key]=[] if key in ('sfx','overlays') else '';self.restore_ui()
         except Exception as exc:self.error(exc)
     def save(self):
         if self.job:return False

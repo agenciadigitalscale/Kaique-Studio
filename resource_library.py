@@ -57,7 +57,7 @@ class LibraryDialog(QDialog):
     def listen(self):
         e=self.selected()
         if not e:return
-        if e['kind'] not in EXTENSIONS or e['kind']=='LUTs':return self.details.setText('Aplique este recurso e gere a prévia com efeitos no editor.')
+        if e['kind'] not in EXTENSIONS or e['kind'] in ('LUTs','Ícones','Imagens'):return self.details.setText('Aplique este recurso e gere a prévia com efeitos no editor.')
         if self.player.playbackState()==QMediaPlayer.PlayingState:self.player.stop();return
         self.studio.player.pause();self.player.setSource(QUrl.fromLocalFile(e['path']));self.player.play()
     def favorite(self):
@@ -104,6 +104,15 @@ class LibraryDialog(QDialog):
             elif e['kind']=='Transições':candidate['transition']=e['value']
             elif e['kind']=='Filtros':candidate['filter']=e['value']
             elif e['kind']=='Presets':candidate=apply_preset(candidate,e['preset'])
+            elif e['kind'] in ['Ícones','Imagens']:
+                corner,ok=QInputDialog.getItem(self,'Sobreposição','Posição na tela:',list(core.CORNERS),0,False)
+                if not ok:return
+                total=core.duration(s.p)
+                start,ok=QInputDialog.getDouble(self,'Sobreposição','Aparece a partir de (segundo):',0,0,max(0,total-.01),2)
+                if not ok:return
+                end,ok=QInputDialog.getDouble(self,'Sobreposição','Some em (segundo):',min(total,start+3),start+.1,total,2)
+                if not ok:return
+                candidate.setdefault('overlays',[]).append(dict(path=e['path'],start=start,end=end,corner=corner,width=180))
             core.validate(candidate);s.checkpoint();s.p=candidate;s.restore_ui()
             self.player.stop();self.details.setText('Aplicado. Feche a biblioteca e clique em Ver prévia com efeitos.')
         except Exception as exc:QMessageBox.warning(self,'Confira',str(exc))

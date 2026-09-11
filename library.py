@@ -10,11 +10,13 @@ from urllib.parse import urlencode
 import core
 
 # Tipos de recurso e categorias — a espinha de organização do acervo.
-KINDS = ['Todos', 'Memes', 'Efeitos sonoros', 'Músicas', 'LUTs', 'Transições', 'Filtros', 'Presets']
+KINDS = ['Todos', 'Memes', 'Efeitos sonoros', 'Músicas', 'Ícones', 'Imagens', 'LUTs', 'Transições', 'Filtros', 'Presets']
 CATEGORIES = ['Todas', 'Humor', 'Reações', 'Suspense', 'Impacto', 'Movimento', 'Interface',
               'Ambiente', 'Gastronomia', 'Natureza', 'Institucional', 'Cinemático', 'Outros']
 AUDIO_EXT = {'.mp3', '.wav', '.m4a', '.aac', '.flac'}
-EXTENSIONS = {'Memes': AUDIO_EXT, 'Efeitos sonoros': AUDIO_EXT, 'Músicas': AUDIO_EXT, 'LUTs': {'.cube'}}
+IMG_EXT = {'.png', '.jpg', '.jpeg', '.webp'}
+EXTENSIONS = {'Memes': AUDIO_EXT, 'Efeitos sonoros': AUDIO_EXT, 'Músicas': AUDIO_EXT,
+              'Ícones': IMG_EXT, 'Imagens': IMG_EXT, 'LUTs': {'.cube'}}
 
 
 def myinstants_url(query):
