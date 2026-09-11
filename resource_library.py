@@ -1,14 +1,35 @@
 """Interface Qt da biblioteca. A lógica do acervo vive em `library.py` (sem Qt)."""
+import json
 from pathlib import Path
-from PySide6.QtCore import Qt, QUrl, QSize
+from PySide6.QtCore import Qt, QUrl, QSize, QMimeData
 from PySide6.QtGui import QDesktopServices, QGuiApplication, QColor, QBrush, QFont
-from PySide6.QtWidgets import (QDialog,QVBoxLayout,QHBoxLayout,QLineEdit,QComboBox,
-    QListWidget,QListWidgetItem,QPushButton,QLabel,QFileDialog,QMessageBox,QInputDialog,QCheckBox)
+from PySide6.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QLineEdit,QComboBox,
+    QListWidget,QListWidgetItem,QPushButton,QLabel,QFileDialog,QMessageBox,QInputDialog,QCheckBox,
+    QAbstractItemView)
 from PySide6.QtMultimedia import QMediaPlayer,QAudioOutput
 import core, updates
 # Reexporta o núcleo para quem já importava daqui (app.py, testes antigos).
 from library import (Catalog, KINDS, CATEGORIES, EXTENSIONS, myinstants_url, apply_preset,
-    all_sources, search_url, group_for_display, kind_emoji, category_emoji)
+    all_sources, search_url, group_for_display, kind_emoji, category_emoji, apply_entry, RESOURCE_MIME)
+
+
+class DragList(QListWidget):
+    """Lista da biblioteca com itens ARRASTÁVEIS para a timeline.
+
+    O recurso viaja como JSON num tipo MIME próprio (`RESOURCE_MIME`); a timeline
+    decodifica e aplica no tempo onde foi solto. Cabeçalhos de seção têm
+    `NoItemFlags`, então não arrastam — só recurso de verdade sai daqui.
+    """
+    def __init__(self):
+        super().__init__()
+        self.setDragEnabled(True);self.setDragDropMode(QAbstractItemView.DragOnly)
+    def mimeData(self, items):
+        md = QMimeData()
+        for it in items:
+            e = it.data(Qt.UserRole)
+            if e:
+                md.setData(RESOURCE_MIME, json.dumps(e).encode('utf-8'));break
+        return md
 
 # Estilo próprio da Biblioteca — herda o tema do app e refina a lista: linhas
 # altas e arejadas, cabeçalho de seção com o verde da marca, seleção destacada.
@@ -24,20 +45,19 @@ QLabel#libhint {color:#8b95a6;font-size:11px;}
 _AUDIO_KINDS = {'Memes', 'Efeitos sonoros', 'Músicas'}
 _HEADER_ROLE = Qt.UserRole + 1  # marca a linha como cabeçalho de seção (não selecionável)
 
-class LibraryDialog(QDialog):
+class LibraryPanel(QWidget):
     def __init__(self,studio,state,base):
         super().__init__(studio);self.studio=studio
         self.catalog=Catalog(Path(state)/'biblioteca',Path(base)/'assets')
-        self.setWindowTitle('Biblioteca • Kaique Studio');self.resize(880,650)
         self.setStyleSheet(LIBRARY_QSS)
         layout=QVBoxLayout(self)
         head=QLabel('🎬  BIBLIOTECA');head.setObjectName('libtitle');layout.addWidget(head)
-        sub=QLabel('Sons, memes, músicas, LUTs, ícones e presets — clique para ouvir na hora.');sub.setObjectName('libhint');layout.addWidget(sub)
+        sub=QLabel('Clique num som para ouvir na hora · arraste qualquer recurso para a timeline · botão direito e “Usar no projeto” também aplicam.');sub.setObjectName('libhint');sub.setWordWrap(True);layout.addWidget(sub)
         filters=QHBoxLayout();self.search=QLineEdit();self.search.setPlaceholderText('🔎  Buscar no acervo, ou digitar um termo e buscar online…')
         self.kind=QComboBox();self.kind.addItems(KINDS);self.category=QComboBox();self.category.addItems(CATEGORIES)
         filters.addWidget(self.search,1);filters.addWidget(self.kind);filters.addWidget(self.category);layout.addLayout(filters)
         self.only_favorites=QCheckBox('Somente favoritos');layout.addWidget(self.only_favorites)
-        self.list=QListWidget();self.list.setSpacing(0);self.list.setUniformItemSizes(False);layout.addWidget(self.list,1)
+        self.list=DragList();self.list.setSpacing(0);self.list.setUniformItemSizes(False);layout.addWidget(self.list,1)
         self.details=QLabel('');self.details.setObjectName('libhint');self.details.setWordWrap(True);layout.addWidget(self.details)
         controls=QHBoxLayout()
         for title,fn in [('Ouvir / parar',self.listen),('★ Favoritar',self.favorite),('Usar no projeto',self.apply),('Importar arquivos',self.import_files)]:
@@ -56,7 +76,9 @@ class LibraryDialog(QDialog):
         self.player=QMediaPlayer(self);self.audio=QAudioOutput(self);self.audio.setVolume(.5);self.player.setAudioOutput(self.audio)
         self.player.errorOccurred.connect(lambda *_:self.details.setText('Não foi possível ouvir: '+self.player.errorString()))
         self.search.textChanged.connect(self.refresh);self.kind.currentTextChanged.connect(self.refresh);self.category.currentTextChanged.connect(self.refresh);self.only_favorites.toggled.connect(self.refresh)
-        self.list.currentItemChanged.connect(self.on_select);self.refresh()
+        self.list.currentItemChanged.connect(self.on_select)
+        self.list.setContextMenuPolicy(Qt.CustomContextMenu);self.list.customContextMenuRequested.connect(self.context_menu)
+        self.refresh()
     def _visible_entries(self):
         query=core.normalized(self.search.text());favorites=self.catalog.data['favorites'];out=[]
         for e in self.catalog.items()+self.catalog.presets():
@@ -152,29 +174,34 @@ class LibraryDialog(QDialog):
         if not e:return
         if not s.p['source']:return QMessageBox.information(self,'Importar takes','Importe os takes antes de aplicar recursos.')
         try:
-            s.sync()
-            import copy
-            candidate=copy.deepcopy(s.p)
-            if e['kind'] in ['Memes','Efeitos sonoros']:
-                t,ok=QInputDialog.getDouble(self,'Posição','Segundo na edição FINAL:',0,0,max(0,core.duration(s.p)-.01),2)
+            s.sync();total=core.duration(s.p);at=0.0;corner=None
+            if e['kind'] in ('Memes','Efeitos sonoros'):
+                at,ok=QInputDialog.getDouble(self,'Posição','Segundo na edição FINAL:',0,0,max(0,total-.01),2)
                 if not ok:return
-                candidate['sfx'].append(dict(path=e['path'],time=t,volume=.7))
-            elif e['kind']=='Músicas':candidate['music']=e['path']
-            elif e['kind']=='LUTs':candidate['lut']=e['path']
-            elif e['kind']=='Transições':candidate['transition']=e['value']
-            elif e['kind']=='Filtros':candidate['filter']=e['value']
-            elif e['kind']=='Presets':candidate=apply_preset(candidate,e['preset'])
-            elif e['kind'] in ['Ícones','Imagens']:
+            elif e['kind'] in ('Ícones','Imagens'):
                 corner,ok=QInputDialog.getItem(self,'Sobreposição','Posição na tela:',list(core.CORNERS),0,False)
                 if not ok:return
-                total=core.duration(s.p)
-                start,ok=QInputDialog.getDouble(self,'Sobreposição','Aparece a partir de (segundo):',0,0,max(0,total-.01),2)
+                at,ok=QInputDialog.getDouble(self,'Sobreposição','Aparece a partir de (segundo):',0,0,max(0,total-.01),2)
                 if not ok:return
-                end,ok=QInputDialog.getDouble(self,'Sobreposição','Some em (segundo):',min(total,start+3),start+.1,total,2)
-                if not ok:return
-                candidate.setdefault('overlays',[]).append(dict(path=e['path'],start=start,end=end,corner=corner,width=180))
+            candidate=apply_entry(s.p,e,at_time=at,corner=corner)
             core.validate(candidate);s.checkpoint();s.p=candidate;s.restore_ui()
-            self.player.stop();self.details.setText('Aplicado. Feche a biblioteca e clique em Ver prévia com efeitos.')
+            self.player.stop();self.details.setText('Aplicado. Clique em “Prévia com efeitos” para ver.')
         except Exception as exc:QMessageBox.warning(self,'Confira',str(exc))
+    def context_menu(self,pos):
+        """Botão direito num recurso: ouvir, aplicar, favoritar — o pedido de
+        'opção pra tudo com botão direito'."""
+        e=self.selected()
+        if not e:return
+        from PySide6.QtWidgets import QMenu
+        menu=QMenu(self)
+        if e['kind'] in _AUDIO_KINDS:menu.addAction('🔊  Ouvir / parar',self.listen)
+        menu.addAction('➕  Usar no projeto',self.apply)
+        star='☆  Desfavoritar' if e['id'] in self.catalog.data['favorites'] else '⭐  Favoritar'
+        menu.addAction(star,self.favorite)
+        menu.exec(self.list.mapToGlobal(pos))
     def closeEvent(self,event):self.player.stop();super().closeEvent(event)
-    def reject(self):self.player.stop();super().reject()
+
+
+# Compat: código/testes antigos importavam LibraryDialog. Hoje é um painel
+# encaixável (não-modal) para permitir arrastar recursos para a timeline.
+LibraryDialog = LibraryPanel

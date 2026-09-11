@@ -4,7 +4,7 @@ A parte visual (LibraryDialog) fica em `resource_library.py`, que reexporta daqu
 Antes tudo morava junto e importava PySide6 no topo: a lógica do acervo não podia
 rodar em teste sem a interface gráfica, e a biblioteca é o coração do produto.
 """
-import json, shutil, uuid
+import copy, json, shutil, uuid
 from pathlib import Path
 from urllib.parse import urlencode
 import core
@@ -211,6 +211,44 @@ CAPTION_TEMPLATES = [
     {'name': 'Frase cheia (legenda de fala)', 'style': {'caption_mode': 'Frase', 'font_size': 24, 'captions_enabled': True}},
     {'name': 'Clean minimalista', 'style': {'caption_mode': 'Frase', 'caption_style': 'Realce', 'font_size': 22, 'captions_enabled': True}},
 ]
+
+
+# Tipo MIME do arraste de recurso (Biblioteca → timeline). Fica aqui, no núcleo
+# sem Qt, para os dois lados (a lista que arrasta e a timeline que recebe) usarem
+# a MESMA string — divergir faria o drop nunca casar.
+RESOURCE_MIME = 'application/x-kaique-resource'
+
+
+def apply_entry(project, entry, at_time=0.0, corner=None, width=180, overlay_len=3.0):
+    """Aplica um recurso do acervo a um projeto (modelo plano), devolvendo uma CÓPIA.
+
+    Não pergunta nada: quem chama passa tempo/canto. É a mesma lógica para o
+    diálogo (que coleta com caixas de diálogo) e para o arraste-para-a-timeline
+    (que deriva o tempo do X onde o recurso foi solto). Ter uma função só evita
+    que o clique e o arraste apliquem coisas diferentes.
+    """
+    p = copy.deepcopy(project)
+    kind = entry['kind']
+    at = max(0.0, float(at_time))
+    if kind in ('Memes', 'Efeitos sonoros'):
+        p.setdefault('sfx', []).append(dict(path=entry['path'], time=at, volume=.7))
+    elif kind == 'Músicas':
+        p['music'] = entry['path']
+    elif kind == 'LUTs':
+        p['lut'] = entry['path']
+    elif kind == 'Transições':
+        p['transition'] = entry.get('value', p.get('transition', 'Nenhuma'))
+    elif kind == 'Filtros':
+        p['filter'] = entry.get('value', p.get('filter', 'Original'))
+    elif kind == 'Presets':
+        p = apply_preset(p, entry['preset'])
+    elif kind in ('Ícones', 'Imagens'):
+        p.setdefault('overlays', []).append(
+            dict(path=entry['path'], start=at, end=at + overlay_len,
+                 corner=corner or list(core.CORNERS)[0], width=width))
+    else:
+        raise ValueError('Este tipo de recurso não pode ser aplicado ao projeto.')
+    return p
 
 
 def caption_template_names():

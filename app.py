@@ -23,16 +23,28 @@ class ClipList(QListWidget):
         self.moved.emit(old,target);event.accept()
 
 class Timeline(QWidget):
-    selected=Signal(int,float);moved=Signal(int,int);trimmed=Signal(int,float,float)
+    selected=Signal(int,float);moved=Signal(int,int);trimmed=Signal(int,float,float);dropped=Signal(object,float)
     def __init__(self):
         super().__init__();self.data=native.project();self.active=-1;self.cursor=0;self.drag=None;self.pixmaps={}
-        self.setMinimumHeight(235);self.setMouseTracking(True)
-        self.setToolTip('Clique para navegar. Arraste o centro para reordenar; arraste as bordas para aparar. Ctrl+Z desfaz.')
+        self.setMinimumHeight(235);self.setMouseTracking(True);self.setAcceptDrops(True)
+        self.setToolTip('Clique para navegar. Arraste o centro para reordenar; arraste as bordas para aparar. Solte um recurso da Biblioteca aqui. Ctrl+Z desfaz.')
     def geometry_data(self):
         total=max(.01,native.length(self.data));scale=max(100,self.width()-110)/total;offset=0;rects=[]
         for c in self.data['clips']:
             width=(c['out']-c['in'])*scale;rects.append((95+offset*scale,width,offset));offset+=c['out']-c['in']
         return scale,rects
+    def _time_at(self,x):
+        scale,_=self.geometry_data();return max(0.0,min((x-95)/scale,native.length(self.data)))
+    def dragEnterEvent(self,event):
+        if event.mimeData().hasFormat(library.RESOURCE_MIME):event.acceptProposedAction()
+    def dragMoveEvent(self,event):
+        if event.mimeData().hasFormat(library.RESOURCE_MIME):event.acceptProposedAction()
+    def dropEvent(self,event):
+        raw=event.mimeData().data(library.RESOURCE_MIME)
+        if not raw:return
+        try:entry=json.loads(bytes(raw).decode('utf-8'))
+        except Exception:return
+        self.dropped.emit(entry,self._time_at(event.position().x()));event.acceptProposedAction()
     def paintEvent(self,event):
         p=QPainter(self);p.fillRect(self.rect(),QColor('#12161b'));scale,rects=self.geometry_data()
         for text,y in [('TAKES',60),('VOZ',139),('LEGENDAS',178),('MÚSICA',206),('EFEITOS',231)]:p.setPen(QColor('#9ca9bb'));p.drawText(4,y,text)
@@ -137,7 +149,7 @@ class Studio(QMainWindow):
         script=QWidget();sc=QVBoxLayout(script);self.client=QLineEdit();self.client.setPlaceholderText('Cliente / projeto');sc.addWidget(self.client);self.script=QPlainTextEdit();self.script.setPlaceholderText('Roteiro de referência');sc.addWidget(self.script);tabs.addTab(script,'Projeto')
         layout.addWidget(label('TIMELINE • arraste o centro para reordenar / bordas para aparar','title'))
         zoom=QSlider(Qt.Horizontal);zoom.setRange(1,8);zoom.setValue(1);zoom.valueChanged.connect(self.zoom_timeline);layout.addWidget(row(label('Zoom da timeline'),zoom))
-        self.timeline=Timeline();self.timeline.selected.connect(self.seek_clip);self.timeline.moved.connect(self.move);self.timeline.trimmed.connect(self.trim)
+        self.timeline=Timeline();self.timeline.selected.connect(self.seek_clip);self.timeline.moved.connect(self.move);self.timeline.trimmed.connect(self.trim);self.timeline.dropped.connect(self.drop_resource)
         self.scroll=QScrollArea();self.scroll.setWidgetResizable(True);self.scroll.setWidget(self.timeline);self.scroll.setMinimumHeight(265);self.scroll.setMaximumHeight(295);layout.addWidget(self.scroll)
         self.status=label('Pronto');self.progress=QProgressBar();self.progress.setRange(0,1);main.addWidget(row(self.status,self.progress))
         for key,fn in [('Ctrl+S',self.save),('Ctrl+Z',self.undo),('Ctrl+B',self.split_clip)]:
@@ -334,11 +346,33 @@ class Studio(QMainWindow):
         def done(path):self.doc['clips'][index]['proxy']=path;self.play_clip(index)
         self.task(lambda progress:native.proxy(c,cache,progress),done)
     def open_library(self):
+        """A Biblioteca é um painel ENCAIXADO (não-modal), para dar pra arrastar
+        recursos dela para a timeline — janela modal não arrasta para a de trás."""
         if self.job:return
         try:
             self.sync()
-            from resource_library import LibraryDialog
-            LibraryDialog(self,STATE,BASE).exec()
+            if not hasattr(self,'library_dock'):
+                from resource_library import LibraryPanel
+                from PySide6.QtWidgets import QDockWidget
+                self.library_panel=LibraryPanel(self,STATE,BASE)
+                self.library_dock=QDockWidget('  BIBLIOTECA',self)
+                self.library_dock.setWidget(self.library_panel)
+                self.library_dock.setAllowedAreas(Qt.LeftDockWidgetArea|Qt.RightDockWidgetArea)
+                self.addDockWidget(Qt.RightDockWidgetArea,self.library_dock)
+                self.library_dock.resize(420,self.height())
+            else:
+                self.library_panel.refresh()
+            self.library_dock.show();self.library_dock.raise_()
+        except Exception as exc:self.error(exc)
+    def drop_resource(self,entry,at_time):
+        """Recurso solto na timeline: aplica no tempo do X onde caiu (mesma lógica
+        do 'Usar no projeto', via library.apply_entry)."""
+        if self.job:return
+        if not self.doc['clips']:return self.info('Importe os takes antes de soltar recursos na timeline.')
+        try:
+            self.sync();candidate=library.apply_entry(self.p,entry,at_time=at_time)
+            core.validate(candidate);self.checkpoint();self.p=candidate;self.restore_ui()
+            self.status.setText(f"{entry.get('title','Recurso')} aplicado em {at_time:.1f}s. Clique em Prévia com efeitos.")
         except Exception as exc:self.error(exc)
     def commands(self):
         actions,unknown=core.commands(self.prompt.toPlainText())
