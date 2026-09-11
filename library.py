@@ -199,6 +199,32 @@ def apply_preset(style, preset):
     return result
 
 
+# ── Modelos prontos de LEGENDA ──────────────────────────────────────────────
+# Um "modelo de legenda" é um preset focado só no texto na tela: junta o modo
+# (palavra ativa / frase…), a animação e o tamanho num clique. É o "escolher um
+# estilo de legenda pronto" que o dono pediu — sem ter que acertar 4 controles.
+CAPTION_TEMPLATES = [
+    {'name': 'TikTok Pop', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Pop', 'font_size': 34, 'captions_enabled': True}},
+    {'name': 'Contorno forte', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Contorno', 'font_size': 32, 'captions_enabled': True}},
+    {'name': 'Realce (destaque na cor)', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Realce', 'font_size': 30, 'captions_enabled': True}},
+    {'name': 'Só palavras-chave', 'style': {'caption_mode': 'Palavras-chave', 'font_size': 32, 'captions_enabled': True}},
+    {'name': 'Frase cheia (legenda de fala)', 'style': {'caption_mode': 'Frase', 'font_size': 24, 'captions_enabled': True}},
+    {'name': 'Clean minimalista', 'style': {'caption_mode': 'Frase', 'caption_style': 'Realce', 'font_size': 22, 'captions_enabled': True}},
+]
+
+
+def caption_template_names():
+    return [t['name'] for t in CAPTION_TEMPLATES]
+
+
+def apply_caption_template(style, name):
+    """Aplica um modelo de legenda pelo nome, devolvendo uma CÓPIA do style."""
+    for t in CAPTION_TEMPLATES:
+        if t['name'] == name:
+            return apply_preset(style, t)
+    raise ValueError('Modelo de legenda desconhecido.')
+
+
 class Catalog:
     """Acervo local do usuário + os recursos que já vêm no aplicativo.
 

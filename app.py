@@ -1,12 +1,13 @@
 from __future__ import annotations
-import copy,json,sys,time
+import copy,json,sys,time,uuid
 from pathlib import Path
 from PySide6.QtCore import Qt,QUrl,QTimer,Signal,QRectF
 from PySide6.QtGui import QPainter,QColor,QPen,QPixmap,QAction,QKeySequence
 from PySide6.QtWidgets import (QApplication,QMainWindow,QWidget,QVBoxLayout,QHBoxLayout,QSplitter,
  QLabel,QPushButton,QListWidget,QListWidgetItem,QAbstractItemView,QTabWidget,QLineEdit,QPlainTextEdit,
  QTableWidget,QTableWidgetItem,QHeaderView,QDoubleSpinBox,QComboBox,QSpinBox,QCheckBox,QScrollArea,
- QSlider,QFileDialog,QMessageBox,QProgressBar)
+ QSlider,QFileDialog,QMessageBox,QProgressBar,QMenu)
+import library
 from PySide6.QtMultimedia import QMediaPlayer,QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
 import core,native
@@ -105,7 +106,8 @@ class Studio(QMainWindow):
         main.addWidget(row(label('KAIQUE / STUDIO','brand'),label('0.6 • BIBLIOTECA VIVA'),button('Novo',self.new),button('Abrir',self.load),button('Salvar',self.save),button('Ajuda',self.help),button('Exportar MP4',lambda:self.export(False),True)))
         self.workspace=QWidget();layout=QVBoxLayout(self.workspace);main.addWidget(self.workspace,1)
         split=QSplitter(Qt.Horizontal);layout.addWidget(split,1)
-        left,l=panel();l.addWidget(button('+ Importar vários takes',self.import_takes,True));self.clips=ClipList();self.clips.currentRowChanged.connect(self.select);self.clips.moved.connect(self.move);l.addWidget(self.clips,1)
+        left,l=panel();l.addWidget(button('+ Importar vários takes',self.import_takes,True));self.clips=ClipList();self.clips.currentRowChanged.connect(self.select);self.clips.moved.connect(self.move)
+        self.clips.setContextMenuPolicy(Qt.CustomContextMenu);self.clips.customContextMenuRequested.connect(self.clips_menu);l.addWidget(self.clips,1)
         l.addWidget(row(button('↑',lambda:self.move(self.active,self.active-1)),button('↓',lambda:self.move(self.active,self.active+1)),button('Remover',self.remove)))
         l.addWidget(button('Biblioteca de recursos',self.open_library));l.addWidget(label('Arraste para reordenar. Cortes e palavras acompanham cada take.'));split.addWidget(left)
         middle,m=panel();self.badge=label('PLAYER / TAKE','title');m.addWidget(self.badge);self.video=QVideoWidget();self.video.setMinimumSize(320,220);self.player.setVideoOutput(self.video);m.addWidget(self.video,1)
@@ -120,6 +122,7 @@ class Studio(QMainWindow):
         e.addWidget(label('Entrada no arquivo original'));e.addWidget(self.ins);e.addWidget(label('Saída no arquivo original'));e.addWidget(self.outs)
         e.addWidget(button('Aplicar corte',self.trim_fields));e.addWidget(button('Dividir no cursor',self.split_clip));e.addWidget(button('Restaurar take inteiro',self.reset_clip));e.addWidget(button('Desfazer • Ctrl+Z',self.undo));e.addStretch();tabs.addTab(edit,'Cortes')
         caption=QWidget();c=QVBoxLayout(caption);c.addWidget(button('Transcrever take',self.transcribe));c.addWidget(button('Transcrever todos os pendentes',lambda:self.transcribe(True),True))
+        c.addWidget(label('Modelo de legenda pronto','title'));self.caption_template=QComboBox();self.caption_template.addItem('— escolher um modelo —');self.caption_template.addItems(library.caption_template_names());self.caption_template.activated.connect(self.pick_caption_template);c.addWidget(self.caption_template)
         self.words=QTableWidget(0,3);self.words.setHorizontalHeaderLabels(['Início','Fim','Palavra']);self.words.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch);c.addWidget(self.words)
         c.addWidget(button('Salvar palavras',self.sync_message));self.mode=QComboBox();self.mode.addItems(['Palavra ativa','Palavras-chave','Frase']);c.addWidget(self.mode)
         self.caption_style=QComboBox();self.caption_style.addItems(core.CAPTION_STYLES);c.addWidget(label('Animação da legenda (no modo Palavra ativa)'));c.addWidget(self.caption_style)
@@ -157,6 +160,16 @@ class Studio(QMainWindow):
     def sync_message(self):
         try:self.sync();self.restore_ui();self.status.setText('Palavras e ajustes salvos no projeto em memória. Ctrl+S para gravar o arquivo.')
         except Exception as exc:self.error(exc)
+    def pick_caption_template(self,idx):
+        """Aplica um modelo pronto de legenda (junta modo+animação+tamanho)."""
+        if idx<=0:return
+        name=self.caption_template.itemText(idx)
+        try:
+            self.sync();self.checkpoint()
+            self.doc['style']=library.apply_caption_template(self.doc['style'],name)
+            self.restore_ui();self.status.setText(f'Modelo de legenda "{name}" aplicado.')
+        except Exception as exc:self.error(exc)
+        finally:self.caption_template.setCurrentIndex(0)
     def restore_ui(self):
         self.loading=True;self.clips.blockSignals(True);self.clips.clear()
         for c in self.doc['clips']:
@@ -231,10 +244,36 @@ class Studio(QMainWindow):
         t=self.player.position()/1000;self.mutate(lambda p:native.split(p,self.active,t))
     def reset_clip(self):
         if self.active>=0:self.trim(self.active,0,self.doc['clips'][self.active]['duration'])
-    def remove(self):
-        if self.active<0:return
-        if len(self.doc['clips'])==1:return self.info('Use Novo para iniciar um projeto vazio.')
-        self.mutate(lambda p:p['clips'].pop(self.active))
+    def remove(self,index=None):
+        index=self.active if index is None else index
+        if not 0<=index<len(self.doc['clips']):return
+        if len(self.doc['clips'])==1:
+            if QMessageBox.question(self,'Remover take','Remover o único take deixa o projeto vazio. Continuar?')!=QMessageBox.Yes:return
+            self.checkpoint();self.doc['clips']=[];self.active=-1;self.player.stop();self.player.setSource(QUrl());self.restore_ui();return
+        self.mutate(lambda p:p['clips'].pop(index))
+    def duplicate_clip(self,index):
+        if not 0<=index<len(self.doc['clips']):return
+        def dup(p):
+            c=copy.deepcopy(p['clips'][index]);c['id']=uuid.uuid4().hex  # id novo: validate recusa duplicado
+            p['clips'].insert(index+1,c)
+        self.mutate(dup)
+    def clips_menu(self,pos):
+        """Botão direito sobre um take: as ações do take na ponta do dedo."""
+        index=self.clips.indexAt(pos).row()
+        if index<0:return
+        if index!=self.active:self.clips.setCurrentRow(index)
+        menu=QMenu(self)
+        menu.addAction('🎬  Reproduzir',lambda:self.play_clip(index))
+        menu.addAction('✂️  Dividir no cursor',self.split_clip)
+        menu.addAction('↺  Restaurar take inteiro',self.reset_clip)
+        menu.addAction('📝  Transcrever (gerar legendas)',lambda:self.transcribe(False))
+        menu.addSeparator()
+        menu.addAction('⬆  Mover para cima',lambda:self.move(index,index-1))
+        menu.addAction('⬇  Mover para baixo',lambda:self.move(index,index+1))
+        menu.addAction('⧉  Duplicar take',lambda:self.duplicate_clip(index))
+        menu.addSeparator()
+        menu.addAction('🗑  Remover take',lambda:self.remove(index))
+        menu.exec(self.clips.mapToGlobal(pos))
     def undo(self):
         if self.job or not self.history:return
         self.doc=self.history.pop();self.restore_ui()
@@ -251,6 +290,11 @@ class Studio(QMainWindow):
     def task_failed(self,text):self.failed=True;self.error(text)
     def task_finished(self):
         self.workspace.setEnabled(True);self.progress.setRange(0,1);self.progress.setValue(0 if self.failed else 1);self.status.setText('Tarefa falhou; confira o aviso.' if self.failed else 'Concluído. Revise o resultado.');self.job.deleteLater();self.job=None
+        if getattr(self,'_offer_captions',False):
+            self._offer_captions=False
+            if not self.failed and any(not c['words'] for c in self.doc['clips']):
+                if QMessageBox.question(self,'Legendas','Gerar legendas automaticamente para os takes agora?\n\nA transcrição usa IA e roda no seu computador (pode levar um pouco).')==QMessageBox.Yes:
+                    QTimer.singleShot(50,lambda:self.transcribe(True))
     def import_takes(self):
         if self.job:return
         paths,_=QFileDialog.getOpenFileNames(self,'Selecionar takes','','Vídeos (*.mp4 *.mov *.mkv *.avi *.webm)')
@@ -262,7 +306,7 @@ class Studio(QMainWindow):
             clips=[]
             for i,path in enumerate(paths):progress(f'Miniaturas {i+1}/{len(paths)}: {Path(path).name}');clips.append(native.inspect(path,cache,progress))
             return clips
-        def done(clips):self.checkpoint();self.doc['clips'].extend(clips);self.restore_ui();self.play_clip(self.active)
+        def done(clips):self.checkpoint();self.doc['clips'].extend(clips);self.restore_ui();self.play_clip(self.active);self._offer_captions=True
         self.task(work,done)
     def transcribe(self,all_pending=False):
         if self.job or self.active<0:return
