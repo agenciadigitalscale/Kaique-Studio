@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (QDialog,QVBoxLayout,QHBoxLayout,QLineEdit,QComboB
 from PySide6.QtMultimedia import QMediaPlayer,QAudioOutput
 import core
 # Reexporta o núcleo para quem já importava daqui (app.py, testes antigos).
-from library import Catalog, KINDS, CATEGORIES, EXTENSIONS, myinstants_url, apply_preset
+from library import Catalog, KINDS, CATEGORIES, EXTENSIONS, myinstants_url, apply_preset, all_sources, search_url
 
 class LibraryDialog(QDialog):
     def __init__(self,studio,state,base):
@@ -16,7 +16,7 @@ class LibraryDialog(QDialog):
         self.setWindowTitle('Biblioteca • Kaique Studio');self.resize(880,650)
         layout=QVBoxLayout(self)
         layout.addWidget(QLabel('BIBLIOTECA / sons, memes, LUTs e presets'))
-        filters=QHBoxLayout();self.search=QLineEdit();self.search.setPlaceholderText('Buscar no acervo ou digitar uma busca para o Myinstants…')
+        filters=QHBoxLayout();self.search=QLineEdit();self.search.setPlaceholderText('Buscar no acervo, ou digitar um termo e buscar online…')
         self.kind=QComboBox();self.kind.addItems(KINDS);self.category=QComboBox();self.category.addItems(CATEGORIES)
         filters.addWidget(self.search,1);filters.addWidget(self.kind);filters.addWidget(self.category);layout.addLayout(filters)
         self.only_favorites=QCheckBox('Somente favoritos');layout.addWidget(self.only_favorites)
@@ -26,8 +26,14 @@ class LibraryDialog(QDialog):
         for title,fn in [('Ouvir / parar',self.listen),('★ Favoritar',self.favorite),('Usar no projeto',self.apply),('Importar arquivos',self.import_files)]:
             b=QPushButton(title);b.clicked.connect(fn);controls.addWidget(b)
         layout.addLayout(controls)
-        online=QPushButton('Buscar no Myinstants ↗');online.clicked.connect(self.online);layout.addWidget(online)
-        note=QLabel('Myinstants abre no navegador. Baixe o áudio desejado no site e importe em Memes. O catálogo online não é espelhado no aplicativo. Memes aqui são áudios; vídeos de memes ainda não entram como sobreposição.')
+        online_row=QHBoxLayout()
+        online_row.addWidget(QLabel('Buscar online em:'))
+        self.source=QComboBox()
+        for kind,name in all_sources():self.source.addItem(f'{kind} · {name}',(kind,name))
+        online_row.addWidget(self.source,1)
+        self.online_btn=QPushButton('Abrir busca ↗');self.online_btn.clicked.connect(self.online);online_row.addWidget(self.online_btn)
+        layout.addLayout(online_row)
+        note=QLabel('A busca online abre a fonte no navegador. Baixe o arquivo e importe aqui — as fontes listadas oferecem conteúdo de uso livre/CC. Confira sempre a licença na página antes de usar em vídeo de cliente.')
         note.setWordWrap(True);layout.addWidget(note)
         self.player=QMediaPlayer(self);self.audio=QAudioOutput(self);self.audio.setVolume(.5);self.player.setAudioOutput(self.audio)
         self.player.errorOccurred.connect(lambda *_:self.details.setText('Não foi possível ouvir: '+self.player.errorString()))
@@ -72,11 +78,15 @@ class LibraryDialog(QDialog):
                 self.details.setText(f'{len(added)} arquivos copiados para seu acervo permanente.')
             except Exception as exc:QMessageBox.warning(self,'Erro',str(exc))
     def online(self):
+        data=self.source.currentData()
+        if not data:return
+        kind,source=data
         query=self.search.text().strip()
         if not query:
-            query,ok=QInputDialog.getText(self,'Myinstants','Qual som procurar?',text='mentira')
-            if not ok:return
-        QDesktopServices.openUrl(QUrl(myinstants_url(query)))
+            query,ok=QInputDialog.getText(self,'Buscar online',f'O que procurar em {source}?')
+            if not ok or not query.strip():return
+        try:QDesktopServices.openUrl(QUrl(search_url(kind,query,source)))
+        except Exception as exc:QMessageBox.warning(self,'Busca',str(exc))
     def apply(self):
         e=self.selected();s=self.studio
         if not e:return

@@ -99,5 +99,44 @@ class CatalogTests(unittest.TestCase):
             cat.save_preset('novo', native.project()['style'])  # não estoura
 
 
+class SearchSourceTests(unittest.TestCase):
+    def test_sources_by_kind(self):
+        self.assertIn('Myinstants', library.sources_for('Efeitos sonoros'))
+        self.assertIn('Google Imagens (uso livre)', library.sources_for('Imagens'))
+        # tipos internos não têm busca online
+        self.assertEqual(library.sources_for('LUTs'), [])
+        self.assertEqual(library.sources_for('Presets'), [])
+
+    def test_search_url_builds_and_encodes(self):
+        u = library.search_url('Músicas', 'lo-fi calmo', 'Pixabay Music (livre)')
+        self.assertEqual(u, 'https://pixabay.com/music/search/lo-fi%20calmo/')
+        # acento é escapado, nada de espaço cru na URL
+        u2 = library.search_url('Imagens', 'coração', 'Openverse (CC)')
+        self.assertNotIn(' ', u2)
+        self.assertIn('cora%C3%A7%C3%A3o', u2)
+
+    def test_google_uses_free_license_filter(self):
+        u = library.search_url('Imagens', 'gato', 'Google Imagens (uso livre)')
+        self.assertIn('tbs=sur:fmc', u)  # filtro de licença de uso livre
+
+    def test_all_sources_exposes_images_and_music(self):
+        pares = library.all_sources()
+        labels = [f'{k} · {n}' for k, n in pares]
+        # a busca de imagens/ícones (o "Google") tem de estar acessível aqui,
+        # não presa a um tipo de acervo que o combo não mostra
+        self.assertTrue(any('Google Imagens' in n for _, n in pares))
+        self.assertTrue(any(k == 'Músicas' for k, _ in pares))
+        self.assertTrue(any(k == 'Ícones' for k, _ in pares))
+        # cada par gera uma URL válida (a fonte pertence ao seu tipo)
+        for k, n in pares:
+            self.assertTrue(library.search_url(k, 'teste', n).startswith('http'))
+
+    def test_bad_source_or_empty_query(self):
+        with self.assertRaises(ValueError):
+            library.search_url('Músicas', 'x', 'Fonte Inexistente')
+        with self.assertRaises(ValueError):
+            library.search_url('Músicas', '   ', 'Pixabay Music (livre)')
+
+
 if __name__ == '__main__':
     unittest.main()

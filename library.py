@@ -21,6 +21,77 @@ def myinstants_url(query):
     return 'https://www.myinstants.com/pt/search/?' + urlencode({'name': query.strip() or 'mentira'})
 
 
+# ── Busca online por tipo, em fontes de uso livre ──────────────────────────
+# Cada fonte é um site que abre no NAVEGADOR com a busca pronta. O usuário
+# baixa lá e importa aqui — nada é raspado nem baixado sem ele ver a licença.
+# São fontes com conteúdo livre/CC de propósito: o material vai para vídeo de
+# cliente, e usar áudio/imagem com direitos seria criar problema, não recurso.
+from urllib.parse import quote as _quote
+
+SOURCES = {
+    'Efeitos sonoros': [
+        ('Myinstants', 'https://www.myinstants.com/pt/search/?name={q}'),
+        ('Pixabay (livre)', 'https://pixabay.com/sound-effects/search/{q}/'),
+        ('Freesound (CC)', 'https://freesound.org/search/?q={q}'),
+    ],
+    'Memes': [
+        ('Myinstants', 'https://www.myinstants.com/pt/search/?name={q}'),
+        ('Pixabay (livre)', 'https://pixabay.com/sound-effects/search/{q}/'),
+    ],
+    'Músicas': [
+        ('Pixabay Music (livre)', 'https://pixabay.com/music/search/{q}/'),
+        ('Free Music Archive', 'https://freemusicarchive.org/search?quicksearch={q}'),
+    ],
+    'Ícones': [
+        ('Flaticon', 'https://www.flaticon.com/search?word={q}'),
+        ('Google Imagens (uso livre)', 'https://www.google.com/search?tbm=isch&tbs=sur:fmc&q={q}'),
+        ('Openverse (CC)', 'https://openverse.org/search/?q={q}'),
+    ],
+    'Imagens': [
+        ('Google Imagens (uso livre)', 'https://www.google.com/search?tbm=isch&tbs=sur:fmc&q={q}'),
+        ('Openverse (CC)', 'https://openverse.org/search/?q={q}'),
+        ('Pixabay (livre)', 'https://pixabay.com/images/search/{q}/'),
+    ],
+}
+
+
+def sources_for(kind):
+    """As fontes de busca de um tipo — [] quando o tipo não tem busca online
+    (LUTs, Filtros, Transições, Presets são internos, não se baixam da web)."""
+    return [name for name, _ in SOURCES.get(kind, [])]
+
+
+def all_sources():
+    """Todas as fontes numa lista, para um seletor de busca próprio — a busca
+    online não depende do filtro do acervo local. Deduplica por URL: Pixabay
+    aparece em tipos diferentes com destinos diferentes (sons × imagens), e cada
+    destino distinto vira uma opção, rotulada pelo tipo."""
+    seen = set()
+    out = []
+    for kind, lst in SOURCES.items():
+        for name, template in lst:
+            if template in seen:
+                continue
+            seen.add(template)
+            out.append((kind, name))
+    return out
+
+
+def search_url(kind, query, source):
+    """Monta a URL de busca de uma fonte para um termo.
+
+    `%20` (via quote) em vez de `+`: serve tanto em caminho quanto em query, e
+    todas as fontes aceitam — evita o `+` que só vale depois do `?`.
+    """
+    options = dict(SOURCES.get(kind, []))
+    if source not in options:
+        raise ValueError('Fonte de busca indisponível para este tipo.')
+    term = query.strip()
+    if not term:
+        raise ValueError('Digite o que procurar.')
+    return options[source].replace('{q}', _quote(term, safe=''))
+
+
 # ── Presets ────────────────────────────────────────────────────────────────
 # Um preset é um COMBO de estilo pronto — o "aplicar com um clique" do produto.
 # Só mexe em valores simples (sem arquivo): filtro, transição, legenda, zoom.
