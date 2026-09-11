@@ -1,0 +1,37 @@
+[
+  {
+    "id": "preset_gastronomia",
+    "name": "Gastronomia quente",
+    "category": "Gastronomia",
+    "description": "Imagem quente e apetitosa, legenda em destaque palavra a palavra.",
+    "style": {"filter": "Quente", "transition": "Nenhuma", "caption_mode": "Palavra ativa", "color": "#FFD24A", "font_size": 24, "zoom": 1.0}
+  },
+  {
+    "id": "preset_dinamico",
+    "name": "Dinâmico de impacto",
+    "category": "Impacto",
+    "description": "Contraste forte, passagem pelo preto entre cortes e leve aproximação.",
+    "style": {"filter": "Contraste", "transition": "Preto", "caption_mode": "Palavra ativa", "color": "#C9FF63", "font_size": 26, "zoom": 1.08}
+  },
+  {
+    "id": "preset_cinematico",
+    "name": "Cinemático frio",
+    "category": "Cinemático",
+    "description": "Ar de cinema: contraste, transição suave pelo preto, legenda por frase.",
+    "style": {"filter": "Contraste", "transition": "Preto", "caption_mode": "Frase", "color": "#EAF2FF", "font_size": 22, "zoom": 1.0}
+  },
+  {
+    "id": "preset_institucional",
+    "name": "Clean institucional",
+    "category": "Institucional",
+    "description": "Imagem natural e legenda sóbria por frase, sem efeitos que distraem.",
+    "style": {"filter": "Original", "transition": "Nenhuma", "caption_mode": "Frase", "color": "#F4F7FF", "font_size": 22, "zoom": 1.0}
+  },
+  {
+    "id": "preset_pb",
+    "name": "Preto e branco marcante",
+    "category": "Cinemático",
+    "description": "Tudo em preto e branco, palavras-chave destacadas.",
+    "style": {"filter": "Preto e branco", "transition": "Branco", "caption_mode": "Palavras-chave", "color": "#FFFFFF", "font_size": 28, "zoom": 1.05}
+  }
+]

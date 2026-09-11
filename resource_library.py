@@ -1,62 +1,13 @@
-"""Local, categorized asset collection. Remote search opens the source website."""
-import json, shutil, uuid
+"""Interface Qt da biblioteca. A lógica do acervo vive em `library.py` (sem Qt)."""
 from pathlib import Path
-from urllib.parse import urlencode
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (QDialog,QVBoxLayout,QHBoxLayout,QLineEdit,QComboBox,
     QListWidget,QListWidgetItem,QPushButton,QLabel,QFileDialog,QMessageBox,QInputDialog,QCheckBox)
 from PySide6.QtMultimedia import QMediaPlayer,QAudioOutput
 import core
-
-KINDS=['Todos','Memes','Efeitos sonoros','Músicas','LUTs','Transições','Filtros']
-CATEGORIES=['Todas','Humor','Reações','Suspense','Impacto','Movimento','Interface','Ambiente',
-            'Gastronomia','Natureza','Institucional','Cinemático','Outros']
-EXTENSIONS={'Memes':{'.mp3','.wav','.m4a','.aac','.flac'},
-            'Efeitos sonoros':{'.mp3','.wav','.m4a','.aac','.flac'},
-            'Músicas':{'.mp3','.wav','.m4a','.aac','.flac'},'LUTs':{'.cube'}}
-
-class Catalog:
-    def __init__(self,root,bundled):
-        self.root=Path(root);self.root.mkdir(parents=True,exist_ok=True)
-        self.file=self.root/'catalogo.json'
-        self.data={'items':[],'favorites':[]}
-        if self.file.exists():self.data=json.loads(self.file.read_text(encoding='utf-8'))
-        self.bundled=Path(bundled)
-        self.defaults=json.loads((self.bundled/'catalog.json').read_text(encoding='utf-8'))
-    def items(self):
-        defaults=[]
-        for entry in self.defaults:
-            e=dict(entry)
-            if e.get('path'):e['path']=str((self.bundled/e['path']).resolve())
-            defaults.append(e)
-        return defaults+self.data['items']
-    def save(self):core.atomic_json(self.file,self.data)
-    def add(self,paths,kind,category):
-        allowed=EXTENSIONS[kind]
-        paths=[Path(p) for p in paths]
-        if any(p.suffix.lower() not in allowed or not p.is_file() for p in paths):
-            raise ValueError('Selecione arquivos compatíveis com o tipo escolhido.')
-        new=[];created=[]
-        try:
-            for path in paths:
-                identifier=uuid.uuid4().hex;target=self.root/(identifier+path.suffix.lower())
-                shutil.copyfile(path,target);created.append(target)
-                new.append(dict(id=identifier,title=path.stem,kind=kind,category=category,path=str(target.resolve())))
-            self.data['items'].extend(new);self.save()
-        except Exception:
-            self.data['items']=[e for e in self.data['items'] if e not in new]
-            for path in created:path.unlink(missing_ok=True)
-            raise
-        return new
-    def favorite(self,identifier):
-        favorites=self.data['favorites']
-        if identifier in favorites:favorites.remove(identifier)
-        else:favorites.append(identifier)
-        self.save()
-
-def myinstants_url(query):
-    return 'https://www.myinstants.com/pt/search/?'+urlencode({'name':query.strip() or 'mentira'})
+# Reexporta o núcleo para quem já importava daqui (app.py, testes antigos).
+from library import Catalog, KINDS, CATEGORIES, EXTENSIONS, myinstants_url, apply_preset
 
 class LibraryDialog(QDialog):
     def __init__(self,studio,state,base):
@@ -84,7 +35,7 @@ class LibraryDialog(QDialog):
         self.list.currentItemChanged.connect(self.describe);self.refresh()
     def refresh(self,*_):
         self.list.clear();query=core.normalized(self.search.text());favorites=self.catalog.data['favorites']
-        for e in self.catalog.items():
+        for e in self.catalog.items()+self.catalog.presets():
             if self.kind.currentText()!='Todos' and e['kind']!=self.kind.currentText():continue
             if self.category.currentText()!='Todas' and e['category']!=self.category.currentText():continue
             if self.only_favorites.isChecked() and e['id'] not in favorites:continue
@@ -142,6 +93,7 @@ class LibraryDialog(QDialog):
             elif e['kind']=='LUTs':candidate['lut']=e['path']
             elif e['kind']=='Transições':candidate['transition']=e['value']
             elif e['kind']=='Filtros':candidate['filter']=e['value']
+            elif e['kind']=='Presets':candidate=apply_preset(candidate,e['preset'])
             core.validate(candidate);s.checkpoint();s.p=candidate;s.restore_ui()
             self.player.stop();self.details.setText('Aplicado. Feche a biblioteca e clique em Ver prévia com efeitos.')
         except Exception as exc:QMessageBox.warning(self,'Confira',str(exc))

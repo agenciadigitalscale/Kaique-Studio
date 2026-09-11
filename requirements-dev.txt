@@ -1,0 +1,4 @@
+# Dependências só para rodar os testes (não vão para a instalação do usuário).
+# Pillow gera vídeos sintéticos em test_core/test_native/test_library.
+-r requirements.txt
+pillow>=10
