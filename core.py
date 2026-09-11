@@ -6,13 +6,14 @@ from pathlib import Path
 VERSION = 2
 FILTERS = {'Original': '', 'Quente': 'eq=saturation=1.08:gamma_r=1.04:gamma_b=0.97',
            'Contraste': 'eq=contrast=1.12:saturation=1.06', 'Preto e branco': 'hue=s=0'}
+CAPTION_STYLES = ['Realce', 'Pop', 'Contorno']
 
 
 def project():
     return dict(version=VERSION, id=str(uuid.uuid4()), client='', source='', duration=0,
                 width=0, height=0, takes=[], words=[], ranges=[], script='', music='', music_volume=0.15,
                 sfx=[], sticker='', sticker_start=0, sticker_end=5, lut='',
-                color='#C9FF63', font_size=22, caption_mode='Palavra ativa', keywords='',
+                color='#C9FF63', font_size=22, caption_mode='Palavra ativa', caption_style='Realce', keywords='',
                 filter='Original', transition='Nenhuma', zoom=1.0, captions_enabled=True)
 
 
@@ -72,6 +73,8 @@ def validate(p, files=True):
         raise ValueError('Cor de legenda inválida.')
     if not 10 <= int(p['font_size']) <= 50 or p['caption_mode'] not in ['Palavra ativa', 'Palavras-chave', 'Frase']:
         raise ValueError('Estilo de legenda inválido.')
+    if p.get('caption_style', 'Realce') not in CAPTION_STYLES:
+        raise ValueError('Animação de legenda inválida.')
     if p['filter'] not in FILTERS or not 1 <= float(p['zoom']) <= 1.3 or not 0 <= float(p['music_volume']) <= 1:
         raise ValueError('Ajuste de imagem ou áudio inválido.')
     if p.get('transition','Nenhuma') not in ['Nenhuma','Preto','Branco']:
@@ -207,6 +210,16 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         groups[-1].append(word)
     keywords = set(re.findall(r'\w+',normalized(p['keywords'])))
     accent=ass_color(p['color'])
+    # A decoração da palavra ativa muda com caption_style. Vale no modo
+    # 'Palavra ativa', o único que anima palavra a palavra — os outros mostram
+    # o grupo inteiro de uma vez, onde animar por palavra não faz sentido.
+    style=p.get('caption_style','Realce')
+    if style=='Pop':
+        active_tag='{\c'+accent+r'\fscx82\fscy82\t(0,110,\fscx112\fscy112)\t(110,200,\fscx100\fscy100)}'
+    elif style=='Contorno':
+        active_tag=r'{\c&HFFFFFF&\bord5\3c'+accent+'}'
+    else:
+        active_tag='{\c'+accent+'}'
     def line(a,b,text):
         if b-a<0.005:
             return ''
@@ -216,7 +229,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             for i,w in enumerate(group):
                 tokens=[]
                 for j,x in enumerate(group):
-                    tag='{\\c'+accent+'}' if i==j else r'{\c&HFFFFFF&}'
+                    tag=active_tag if i==j else r'{\c&HFFFFFF&}'
                     tokens.append(tag+safe_text(x['text']))
                 end=group[i+1]['start'] if i+1<len(group) else w['end']
                 head+=line(w['start'],end,' '.join(tokens))

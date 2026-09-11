@@ -97,12 +97,13 @@ def search_url(kind, query, source):
 # Só mexe em valores simples (sem arquivo): filtro, transição, legenda, zoom.
 # LUT e música continuam vindo como assets normais, porque são arquivos e o
 # caminho depende da máquina.
-PRESET_KEYS = ['filter', 'transition', 'color', 'font_size', 'caption_mode', 'zoom',
-               'music_volume', 'captions_enabled']
+PRESET_KEYS = ['filter', 'transition', 'color', 'font_size', 'caption_mode', 'caption_style',
+               'zoom', 'music_volume', 'captions_enabled']
 
 _FILTERS = set(core.FILTERS)
 _TRANSITIONS = {'Nenhuma', 'Preto', 'Branco'}
 _CAPTION_MODES = {'Palavra ativa', 'Palavras-chave', 'Frase'}
+_CAPTION_STYLES = set(core.CAPTION_STYLES)
 
 
 def validate_preset(preset):
@@ -125,6 +126,8 @@ def validate_preset(preset):
             raise ValueError('Transição do preset inválida.')
         if key == 'caption_mode' and value not in _CAPTION_MODES:
             raise ValueError('Modo de legenda do preset inválido.')
+        if key == 'caption_style' and value not in _CAPTION_STYLES:
+            raise ValueError('Animação de legenda do preset inválida.')
         if key == 'font_size' and not 10 <= int(value) <= 50:
             raise ValueError('Tamanho de fonte do preset fora da faixa (10–50).')
         if key == 'zoom' and not 1 <= float(value) <= 1.3:

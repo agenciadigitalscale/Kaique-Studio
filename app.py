@@ -122,6 +122,7 @@ class Studio(QMainWindow):
         caption=QWidget();c=QVBoxLayout(caption);c.addWidget(button('Transcrever take',self.transcribe));c.addWidget(button('Transcrever todos os pendentes',lambda:self.transcribe(True),True))
         self.words=QTableWidget(0,3);self.words.setHorizontalHeaderLabels(['Início','Fim','Palavra']);self.words.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch);c.addWidget(self.words)
         c.addWidget(button('Salvar palavras',self.sync_message));self.mode=QComboBox();self.mode.addItems(['Palavra ativa','Palavras-chave','Frase']);c.addWidget(self.mode)
+        self.caption_style=QComboBox();self.caption_style.addItems(core.CAPTION_STYLES);c.addWidget(label('Animação da legenda (no modo Palavra ativa)'));c.addWidget(self.caption_style)
         self.keywords=QLineEdit();self.keywords.setPlaceholderText('Palavras-chave separadas por vírgula');c.addWidget(self.keywords)
         self.font=QSpinBox();self.font.setRange(10,50);c.addWidget(label('Tamanho da legenda'));c.addWidget(self.font)
         self.enabled=QCheckBox('Legendas na exportação');c.addWidget(self.enabled);tabs.addTab(caption,'Legendas')
@@ -146,7 +147,7 @@ class Studio(QMainWindow):
         if self.loading:return
         candidate=copy.deepcopy(self.doc)
         candidate.update(client=self.client.text(),script=self.script.toPlainText())
-        candidate['style'].update(caption_mode=self.mode.currentText(),keywords=self.keywords.text(),font_size=self.font.value(),captions_enabled=self.enabled.isChecked(),filter=self.look.currentText(),transition=self.transition.currentText(),music_volume=self.volume.value()/100)
+        candidate['style'].update(caption_mode=self.mode.currentText(),caption_style=self.caption_style.currentText(),keywords=self.keywords.text(),font_size=self.font.value(),captions_enabled=self.enabled.isChecked(),filter=self.look.currentText(),transition=self.transition.currentText(),music_volume=self.volume.value()/100)
         if 0<=self.active<len(candidate['clips']):
             words=[]
             for i in range(self.words.rowCount()):words.append(dict(start=float(self.words.item(i,0).text().replace(',','.')),end=float(self.words.item(i,1).text().replace(',','.')),text=self.words.item(i,2).text()))
@@ -167,7 +168,7 @@ class Studio(QMainWindow):
         self.active=min(self.active,len(self.doc['clips'])-1)
         if self.active<0 and self.doc['clips']:self.active=0
         self.clips.setCurrentRow(self.active);self.clips.blockSignals(False)
-        s=self.doc['style'];self.mode.setCurrentText(s['caption_mode']);self.keywords.setText(s['keywords']);self.font.setValue(s['font_size']);self.enabled.setChecked(s['captions_enabled']);self.look.setCurrentText(s['filter']);self.transition.setCurrentText(s['transition']);self.volume.setValue(round(s['music_volume']*100));self.client.setText(self.doc['client']);self.script.setPlainText(self.doc['script'])
+        s=self.doc['style'];self.mode.setCurrentText(s['caption_mode']);self.caption_style.setCurrentText(s.get('caption_style','Realce'));self.keywords.setText(s['keywords']);self.font.setValue(s['font_size']);self.enabled.setChecked(s['captions_enabled']);self.look.setCurrentText(s['filter']);self.transition.setCurrentText(s['transition']);self.volume.setValue(round(s['music_volume']*100));self.client.setText(self.doc['client']);self.script.setPlainText(self.doc['script'])
         self.effects.setText(f"Música: {Path(s['music']).name if s['music'] else 'nenhuma'}\nEfeitos sonoros: {len(s['sfx'])}\nLUT: {Path(s['lut']).name if s['lut'] else 'nenhuma'}")
         self.words.setRowCount(0)
         if self.active>=0:
