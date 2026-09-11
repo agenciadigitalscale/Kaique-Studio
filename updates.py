@@ -13,9 +13,11 @@ import json
 from urllib.parse import urlparse
 import library
 
-# Onde o manifesto vai morar. Placeholder até o DS HUB publicar o catálogo —
-# enquanto for isto, "Buscar novidades" avisa que ainda não há canal, sem erro.
-MANIFEST_URL = 'https://social-media-painel.pages.dev/studio/catalogo.json'
+# O catálogo é servido pelo DS HUB (GET /api/studio-catalog): a equipe publica
+# novidade gravando a chave `sm_studio_catalog` no painel, sem redeploy nem
+# reinstalar o Studio. Enquanto a chave não existir, o endpoint devolve
+# {"packs": []} e "Buscar novidades" diz "tudo em dia" — nunca erro.
+MANIFEST_URL = 'https://social-media-painel.pages.dev/api/studio-catalog'
 
 # Só http(s): um manifesto não pode mandar o app abrir file:// nem outro esquema.
 _ALLOWED_SCHEMES = {'http', 'https'}
