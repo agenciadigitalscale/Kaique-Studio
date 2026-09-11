@@ -1,0 +1,38 @@
+KAIQUE STUDIO — NOVIDADES DESTA BUILD (0.6)
+
+Sobre a base 0.5, foram adicionadas ferramentas, todas verificadas por teste
+(46 testes verdes, incluindo exportações reais de vídeo):
+
+BIBLIOTECA
+- PRESETS prontos: combos de estilo aplicados com um clique (Gastronomia quente,
+  Dinâmico de impacto, Cinemático frio, Clean institucional, Preto e branco
+  marcante). Você também salva os seus, e eles ficam guardados.
+- BUSCA ONLINE por fontes de uso livre, escolhendo a fonte:
+  · Sons/memes: Myinstants, Pixabay, Freesound
+  · Músicas sem direitos: Pixabay Music, Free Music Archive
+  · Ícones: Flaticon, Google Imagens (uso livre), Openverse
+  · Imagens: Google Imagens (uso livre), Openverse, Pixabay
+  A busca abre a fonte no navegador; você baixa e importa. Confira a licença.
+
+LEGENDAS DINÂMICAS (no modo "Palavra ativa")
+- Realce: a palavra acende na cor de destaque (como antes).
+- Pop: a palavra cresce rápido e assenta (estilo CapCut).
+- Contorno: palavra branca com traço grosso na cor de destaque.
+
+SOBREPOSIÇÕES (imagens e ícones no vídeo)
+- Agora até 8 por projeto, cada uma no seu canto (4 posições) e no seu tempo.
+- Importe imagens/ícones na Biblioteca e clique em "Usar no projeto": ele
+  pergunta a posição e o tempo. "Remover imagens/ícones" limpa todas.
+
+FILTROS (de 4 para 12)
+- Novos: Frio, Vívido, Desbotado, Nítido, Suave, Vinheta, Sépia, Cinema.
+
+COMO ATUALIZAR
+- Extraia este ZIP para uma pasta NOVA. Rode INSTALAR.bat e depois INICIAR.bat.
+- Seus projetos e sua biblioteca das versões anteriores continuam válidos
+  (projeto antigo com um sticker vira uma sobreposição automaticamente).
+
+AINDA PENDENTE (próximas etapas)
+- Memes de VÍDEO como sobreposição (hoje a sobreposição é imagem estática).
+- Reprodução contínua sem "pulos" ao trocar de clipe.
+- Ponte com o DS HUB (puxar a fila de edição e entregar o export).
