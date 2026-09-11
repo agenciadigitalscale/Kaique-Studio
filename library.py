@@ -23,6 +23,53 @@ def myinstants_url(query):
     return 'https://www.myinstants.com/pt/search/?' + urlencode({'name': query.strip() or 'mentira'})
 
 
+# ── Identidade visual do acervo: emojis por tipo e categoria ────────────────
+# Cada recurso ganha um ícone para ser reconhecido de relance — a lista deixa de
+# ser texto puro e vira algo escaneável, que é o pedido do dono do produto.
+KIND_EMOJI = {
+    'Memes': '😂', 'Efeitos sonoros': '🔊', 'Músicas': '🎵', 'Ícones': '🔷',
+    'Imagens': '🖼️', 'LUTs': '🎨', 'Transições': '🎞️', 'Filtros': '✨', 'Presets': '🎯',
+}
+CATEGORY_EMOJI = {
+    'Humor': '😂', 'Reações': '😲', 'Suspense': '😱', 'Impacto': '💥', 'Movimento': '💨',
+    'Interface': '🖱️', 'Ambiente': '🌆', 'Gastronomia': '🍕', 'Natureza': '🌿',
+    'Institucional': '🏢', 'Cinemático': '🎬', 'Outros': '📦',
+}
+# Ordem de exibição: Presets primeiro (o "aplicar com um clique"), depois o áudio
+# que se ouve, depois o visual. Tipo fora desta lista cai no fim, em ordem alfabética.
+KIND_ORDER = ['Presets', 'Efeitos sonoros', 'Memes', 'Músicas', 'LUTs', 'Filtros', 'Transições', 'Ícones', 'Imagens']
+
+
+def kind_emoji(kind):
+    return KIND_EMOJI.get(kind, '•')
+
+
+def category_emoji(category):
+    return CATEGORY_EMOJI.get(category, '•')
+
+
+def group_for_display(entries):
+    """Agrupa os recursos por TIPO para a lista da biblioteca.
+
+    Devolve uma sequência de linhas prontas para a UI, intercalando cabeçalhos
+    e itens: `('header', kind, count)` e `('item', entry)`. A UI não decide
+    ordem nem contagem — só desenha; assim a regra de organização fica testável
+    sem Qt. Dentro de cada tipo, ordena por categoria e depois por título.
+    """
+    by_kind = {}
+    for e in entries:
+        by_kind.setdefault(e['kind'], []).append(e)
+    ordered = [k for k in KIND_ORDER if k in by_kind]
+    ordered += sorted(k for k in by_kind if k not in KIND_ORDER)
+    rows = []
+    for kind in ordered:
+        items = sorted(by_kind[kind], key=lambda e: (e.get('category', ''), e['title'].lower()))
+        rows.append(('header', kind, len(items)))
+        for e in items:
+            rows.append(('item', e))
+    return rows
+
+
 # ── Busca online por tipo, em fontes de uso livre ──────────────────────────
 # Cada fonte é um site que abre no NAVEGADOR com a busca pronta. O usuário
 # baixa lá e importa aqui — nada é raspado nem baixado sem ele ver a licença.

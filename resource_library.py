@@ -1,27 +1,44 @@
 """Interface Qt da biblioteca. A lógica do acervo vive em `library.py` (sem Qt)."""
 from pathlib import Path
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices, QGuiApplication
+from PySide6.QtCore import Qt, QUrl, QSize
+from PySide6.QtGui import QDesktopServices, QGuiApplication, QColor, QBrush, QFont
 from PySide6.QtWidgets import (QDialog,QVBoxLayout,QHBoxLayout,QLineEdit,QComboBox,
     QListWidget,QListWidgetItem,QPushButton,QLabel,QFileDialog,QMessageBox,QInputDialog,QCheckBox)
 from PySide6.QtMultimedia import QMediaPlayer,QAudioOutput
 import core, updates
 # Reexporta o núcleo para quem já importava daqui (app.py, testes antigos).
-from library import Catalog, KINDS, CATEGORIES, EXTENSIONS, myinstants_url, apply_preset, all_sources, search_url
+from library import (Catalog, KINDS, CATEGORIES, EXTENSIONS, myinstants_url, apply_preset,
+    all_sources, search_url, group_for_display, kind_emoji, category_emoji)
+
+# Estilo próprio da Biblioteca — herda o tema do app e refina a lista: linhas
+# altas e arejadas, cabeçalho de seção com o verde da marca, seleção destacada.
+LIBRARY_QSS = '''
+QDialog {background:#101216;}
+QListWidget {background:#12151b;border:1px solid #2a303b;border-radius:10px;padding:4px;outline:0;}
+QListWidget::item {padding:9px 10px;border-radius:7px;margin:1px 2px;}
+QListWidget::item:hover {background:#1b2230;}
+QListWidget::item:selected {background:#2f4a1e;color:#eaffce;}
+QLabel#libtitle {font-size:15px;font-weight:800;letter-spacing:1px;color:#c9ff63;}
+QLabel#libhint {color:#8b95a6;font-size:11px;}
+'''
+_AUDIO_KINDS = {'Memes', 'Efeitos sonoros', 'Músicas'}
+_HEADER_ROLE = Qt.UserRole + 1  # marca a linha como cabeçalho de seção (não selecionável)
 
 class LibraryDialog(QDialog):
     def __init__(self,studio,state,base):
         super().__init__(studio);self.studio=studio
         self.catalog=Catalog(Path(state)/'biblioteca',Path(base)/'assets')
         self.setWindowTitle('Biblioteca • Kaique Studio');self.resize(880,650)
+        self.setStyleSheet(LIBRARY_QSS)
         layout=QVBoxLayout(self)
-        layout.addWidget(QLabel('BIBLIOTECA / sons, memes, LUTs e presets'))
-        filters=QHBoxLayout();self.search=QLineEdit();self.search.setPlaceholderText('Buscar no acervo, ou digitar um termo e buscar online…')
+        head=QLabel('🎬  BIBLIOTECA');head.setObjectName('libtitle');layout.addWidget(head)
+        sub=QLabel('Sons, memes, músicas, LUTs, ícones e presets — clique para ouvir na hora.');sub.setObjectName('libhint');layout.addWidget(sub)
+        filters=QHBoxLayout();self.search=QLineEdit();self.search.setPlaceholderText('🔎  Buscar no acervo, ou digitar um termo e buscar online…')
         self.kind=QComboBox();self.kind.addItems(KINDS);self.category=QComboBox();self.category.addItems(CATEGORIES)
         filters.addWidget(self.search,1);filters.addWidget(self.kind);filters.addWidget(self.category);layout.addLayout(filters)
         self.only_favorites=QCheckBox('Somente favoritos');layout.addWidget(self.only_favorites)
-        self.list=QListWidget();layout.addWidget(self.list,1)
-        self.details=QLabel('');self.details.setWordWrap(True);layout.addWidget(self.details)
+        self.list=QListWidget();self.list.setSpacing(0);self.list.setUniformItemSizes(False);layout.addWidget(self.list,1)
+        self.details=QLabel('');self.details.setObjectName('libhint');self.details.setWordWrap(True);layout.addWidget(self.details)
         controls=QHBoxLayout()
         for title,fn in [('Ouvir / parar',self.listen),('★ Favoritar',self.favorite),('Usar no projeto',self.apply),('Importar arquivos',self.import_files)]:
             b=QPushButton(title);b.clicked.connect(fn);controls.addWidget(b)
@@ -39,26 +56,49 @@ class LibraryDialog(QDialog):
         self.player=QMediaPlayer(self);self.audio=QAudioOutput(self);self.audio.setVolume(.5);self.player.setAudioOutput(self.audio)
         self.player.errorOccurred.connect(lambda *_:self.details.setText('Não foi possível ouvir: '+self.player.errorString()))
         self.search.textChanged.connect(self.refresh);self.kind.currentTextChanged.connect(self.refresh);self.category.currentTextChanged.connect(self.refresh);self.only_favorites.toggled.connect(self.refresh)
-        self.list.currentItemChanged.connect(self.describe);self.refresh()
-    def refresh(self,*_):
-        self.list.clear();query=core.normalized(self.search.text());favorites=self.catalog.data['favorites']
+        self.list.currentItemChanged.connect(self.on_select);self.refresh()
+    def _visible_entries(self):
+        query=core.normalized(self.search.text());favorites=self.catalog.data['favorites'];out=[]
         for e in self.catalog.items()+self.catalog.presets():
             if self.kind.currentText()!='Todos' and e['kind']!=self.kind.currentText():continue
             if self.category.currentText()!='Todas' and e['category']!=self.category.currentText():continue
             if self.only_favorites.isChecked() and e['id'] not in favorites:continue
             if query not in core.normalized(' '.join([e['title'],e['kind'],e['category']])):continue
-            item=QListWidgetItem(('★ ' if e['id'] in favorites else '')+f"{e['title']}  ·  {e['kind']} / {e['category']}")
-            item.setData(Qt.UserRole,e);self.list.addItem(item)
-        self.details.setText(f'{self.list.count()} recursos. Selecione um para ouvir ou aplicar.')
+            out.append(e)
+        return out
+    def refresh(self,*_):
+        self.list.clear();favorites=self.catalog.data['favorites'];total=0
+        for r in group_for_display(self._visible_entries()):
+            if r[0]=='header':
+                _,kind,count=r
+                h=QListWidgetItem(f'{kind_emoji(kind)}  {kind.upper()}   ·   {count}')
+                h.setData(_HEADER_ROLE,True);h.setFlags(Qt.NoItemFlags)  # não selecionável, não clicável
+                f=QFont();f.setBold(True);f.setPointSize(9);h.setFont(f);h.setForeground(QBrush(QColor('#c9ff63')))
+                h.setSizeHint(QSize(0,30));self.list.addItem(h)
+            else:
+                e=r[1];star='⭐ ' if e['id'] in favorites else ''
+                item=QListWidgetItem(f"{star}{category_emoji(e['category'])}  {e['title']}     {e['category']}")
+                item.setData(Qt.UserRole,e);item.setSizeHint(QSize(0,38));self.list.addItem(item);total+=1
+        self.details.setText(f'{total} recursos no acervo. Clique num som para ouvir na hora; use os botões abaixo para favoritar ou aplicar.')
     def selected(self):
-        item=self.list.currentItem();return item.data(Qt.UserRole) if item else None
+        item=self.list.currentItem()
+        return item.data(Qt.UserRole) if item and not item.data(_HEADER_ROLE) else None
+    def on_select(self,*_):
+        """Um clique já toca: seleção de um som dispara a prévia na hora (pedido do
+        dono). Tipo visual (LUT/ícone/imagem/preset) não toca — descreve."""
+        e=self.selected()
+        if not e:return
+        self.describe()
+        if e['kind'] in _AUDIO_KINDS and e.get('path'):
+            self.studio.player.pause();self.player.stop()
+            self.player.setSource(QUrl.fromLocalFile(e['path']));self.player.play()
     def describe(self,*_):
         e=self.selected()
         if e:self.details.setText(e.get('description','Arquivo local: '+e['title']))
     def listen(self):
         e=self.selected()
         if not e:return
-        if e['kind'] not in EXTENSIONS or e['kind'] in ('LUTs','Ícones','Imagens'):return self.details.setText('Aplique este recurso e gere a prévia com efeitos no editor.')
+        if e['kind'] not in _AUDIO_KINDS:return self.details.setText('Aplique este recurso e gere a prévia com efeitos no editor.')
         if self.player.playbackState()==QMediaPlayer.PlayingState:self.player.stop();return
         self.studio.player.pause();self.player.setSource(QUrl.fromLocalFile(e['path']));self.player.play()
     def favorite(self):
