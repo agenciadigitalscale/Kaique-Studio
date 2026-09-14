@@ -90,13 +90,45 @@ def caption_color_for(mode, index, base):
 
 # Palavra → emoji (chaves normalizadas: minúsculas, sem acento).
 EMOJI_MAP = {
-    'fogo': '🔥', 'top': '🔥', 'quente': '🔥', 'incrivel': '🤯', 'chocante': '🤯',
-    'dinheiro': '💰', 'money': '💰', 'lucro': '💰', 'preco': '💲', 'gratis': '🎁',
-    'amor': '❤️', 'coracao': '❤️', 'love': '❤️', 'feliz': '😄', 'risada': '😂',
-    'triste': '😢', 'chorando': '😭', 'atencao': '⚠️', 'cuidado': '⚠️', 'novo': '✨',
-    'ideia': '💡', 'dica': '💡', 'certo': '✅', 'sim': '✅', 'nao': '❌', 'errado': '❌',
-    'tempo': '⏰', 'rapido': '⚡', 'forte': '💪', 'estrela': '⭐', 'melhor': '🏆',
-    'foguete': '🚀', 'crescer': '📈', 'olho': '👀', 'presente': '🎁', 'festa': '🎉',
+    # fogo / impacto
+    'fogo': '🔥', 'top': '🔥', 'quente': '🔥', 'bombando': '🔥', 'incrivel': '🤯',
+    'chocante': '🤯', 'absurdo': '🤯', 'inacreditavel': '🤯', 'explodir': '💥', 'boom': '💥',
+    # dinheiro / negócio
+    'dinheiro': '💰', 'money': '💰', 'lucro': '💰', 'grana': '💰', 'rico': '🤑',
+    'preco': '💲', 'barato': '💲', 'caro': '💲', 'gratis': '🎁', 'desconto': '🏷️',
+    'promocao': '🏷️', 'oferta': '🏷️', 'vender': '🛒', 'comprar': '🛒', 'venda': '🛒',
+    'cliente': '🤝', 'negocio': '💼', 'trabalho': '💼', 'empresa': '🏢', 'meta': '🎯',
+    'objetivo': '🎯', 'foco': '🎯', 'resultado': '📊', 'grafico': '📊', 'crescer': '📈',
+    'crescimento': '📈', 'cair': '📉', 'investir': '📈',
+    # emoções
+    'amor': '❤️', 'coracao': '❤️', 'love': '❤️', 'paixao': '😍', 'lindo': '😍',
+    'linda': '😍', 'maravilhoso': '😍', 'feliz': '😄', 'alegria': '😄', 'sorriso': '😊',
+    'risada': '😂', 'engracado': '😂', 'kkk': '😂', 'triste': '😢', 'chorando': '😭',
+    'raiva': '😡', 'bravo': '😡', 'medo': '😱', 'susto': '😱', 'surpresa': '😮',
+    # marcadores
+    'atencao': '⚠️', 'cuidado': '⚠️', 'importante': '❗', 'alerta': '🚨', 'novo': '✨',
+    'novidade': '✨', 'magia': '✨', 'ideia': '💡', 'dica': '💡', 'sacada': '💡',
+    'certo': '✅', 'sim': '✅', 'aprovado': '✅', 'feito': '✅', 'nao': '❌',
+    'errado': '❌', 'proibido': '🚫', 'pare': '🛑',
+    # tempo / velocidade
+    'tempo': '⏰', 'hoje': '📅', 'agora': '⏳', 'rapido': '⚡', 'energia': '⚡',
+    'urgente': '🚨',
+    # força / conquista
+    'forte': '💪', 'poder': '💪', 'forca': '💪', 'estrela': '⭐', 'melhor': '🏆',
+    'campeao': '🏆', 'vencer': '🏆', 'ganhar': '🏆', 'medalha': '🥇', 'primeiro': '🥇',
+    # movimento / crescimento
+    'foguete': '🚀', 'decolar': '🚀', 'olho': '👀', 'olha': '👀', 'ver': '👀',
+    'presente': '🎁', 'festa': '🎉', 'comemorar': '🎉', 'parabens': '🎉',
+    # gestos / pessoas
+    'joia': '👍', 'legal': '👍', 'gostei': '👍', 'aplausos': '👏', 'obrigado': '🙏',
+    'oi': '👋', 'tchau': '👋', 'pensar': '🤔', 'duvida': '🤔',
+    # natureza / comida
+    'sol': '☀️', 'agua': '💧', 'praia': '🏖️', 'natureza': '🌿', 'planta': '🌱',
+    'cafe': '☕', 'comida': '🍔', 'pizza': '🍕', 'bolo': '🍰', 'saude': '🩺',
+    # conteúdo / redes
+    'video': '🎬', 'camera': '📸', 'foto': '📸', 'musica': '🎵', 'telefone': '📱',
+    'celular': '📱', 'like': '👍', 'seguir': '➕', 'compartilhar': '🔁', 'salvar': '🔖',
+    'link': '🔗', 'mensagem': '💬', 'notificacao': '🔔',
 }
 
 
