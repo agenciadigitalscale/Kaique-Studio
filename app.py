@@ -126,9 +126,10 @@ class Studio(QMainWindow):
         self.caption=label('Importe os takes para começar.','title');m.addWidget(self.caption)
         self.seek=QSlider(Qt.Horizontal);self.seek.setRange(0,10000);self.seek.sliderMoved.connect(self.scrub);m.addWidget(self.seek)
         self.clock=label('0.0s');m.addWidget(row(button('▶ / Ⅱ',self.toggle),self.clock,button('Voltar ao take',lambda:self.play_clip(self.active))))
+        m.addWidget(button('💬  Legendar tudo (transcrever + estilo)',self.legendar_tudo,True))
         self.cut_level=QComboBox();self.cut_level.addItems(list(core.SILENCE_LEVELS));self.cut_level.setCurrentText('Médio')
         m.addWidget(row(button('✂  Cortar silêncios automaticamente',self.auto_cut_silences,True),label('Intensidade'),self.cut_level))
-        m.addWidget(label('Remove as pausas entre as falas usando a transcrição. Ctrl+Z desfaz.','muted'))
+        m.addWidget(label('Legendar tudo: transcreve e já aplica um estilo. Cortar silêncios: remove as pausas. Ctrl+Z desfaz.','muted'))
         m.addWidget(row(button('Criar prévia leve',self.make_proxy),button('Prévia com efeitos',lambda:self.export(True))));m.addWidget(label('Player de takes segue a sequência; efeitos aparecem na prévia renderizada.'));split.addWidget(middle)
         right,r=panel();tabs=QTabWidget();r.addWidget(tabs);split.addWidget(right);split.setSizes([260,730,370])
         command=QWidget();cm=QVBoxLayout(command);self.prompt=QPlainTextEdit();self.prompt.setPlaceholderText('cortes e legenda; filtro quente');cm.addWidget(self.prompt);cm.addWidget(button('Aplicar comandos',self.commands));cm.addWidget(label('Comandos predefinidos. Transcreva antes de solicitar cortes. Takes sem palavras são preservados; revise imagens de apoio.'));tabs.addTab(command,'Comandos')
@@ -310,6 +311,9 @@ class Studio(QMainWindow):
             if not self.failed and any(not c['words'] for c in self.doc['clips']):
                 if QMessageBox.question(self,'Legendas','Gerar legendas automaticamente para os takes agora?\n\nA transcrição usa IA e roda no seu computador (pode levar um pouco).')==QMessageBox.Yes:
                     QTimer.singleShot(50,lambda:self.transcribe(True))
+        if getattr(self,'_apply_caption_after',False):
+            self._apply_caption_after=False
+            if not self.failed:QTimer.singleShot(50,self._apply_default_captions)
     def import_takes(self):
         if self.job:return
         paths,_=QFileDialog.getOpenFileNames(self,'Selecionar takes','','Vídeos (*.mp4 *.mov *.mkv *.avi *.webm)')
@@ -394,6 +398,23 @@ class Studio(QMainWindow):
             self.status.setText('Nenhuma pausa longa encontrada nessa intensidade — experimente "Agressivo".')
         else:
             self.status.setText(f'✂ Silêncios cortados: −{removed:.1f}s (de {self._mmss(before)} para {self._mmss(after)}). Ctrl+Z desfaz.')
+    def legendar_tudo(self):
+        """Um clique: transcreve o que falta e aplica um modelo bonito de legenda.
+        Junta transcrição + legenda inteligente + estilo num gesto só."""
+        if self.job:return
+        if not self.doc['clips']:return self.info('Importe os takes primeiro.')
+        if any(not c['words'] for c in self.doc['clips']):
+            self._apply_caption_after=True   # aplica o estilo quando a transcrição terminar
+            self.transcribe(True)
+        else:
+            self._apply_default_captions()
+    def _apply_default_captions(self):
+        try:
+            self.sync();self.checkpoint()
+            self.doc['style']=library.apply_caption_template(self.doc['style'],'TikTok Pop')
+            self.restore_ui()
+            self.status.setText('Pronto! Legendas geradas e estilo aplicado. Troque o modelo na aba Legendas se quiser.')
+        except Exception as exc:self.error(exc)
     def commands(self):
         actions,unknown=core.commands(self.prompt.toPlainText())
         if unknown:return self.info('Pedidos não reconhecidos: '+', '.join(unknown))
