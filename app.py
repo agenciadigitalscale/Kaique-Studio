@@ -123,7 +123,7 @@ class Studio(QMainWindow):
         self.clips.setContextMenuPolicy(Qt.CustomContextMenu);self.clips.customContextMenuRequested.connect(self.clips_menu);l.addWidget(self.clips,1)
         l.addWidget(row(button('↑',lambda:self.move(self.active,self.active-1)),button('↓',lambda:self.move(self.active,self.active+1)),button('Remover',self.remove)))
         l.addWidget(button('Biblioteca de recursos',self.open_library));l.addWidget(label('Arraste para reordenar. Cortes e palavras acompanham cada take.'));split.addWidget(left)
-        middle,m=panel();self.badge=label('PLAYER / TAKE','title');m.addWidget(self.badge);self.video=QVideoWidget();self.video.setMinimumSize(360,420);self.player.setVideoOutput(self.video);m.addWidget(self.video,1)
+        middle,m=panel();self.badge=label('PLAYER / TAKE','title');m.addWidget(self.badge);self.video=QVideoWidget();self.video.setMinimumSize(320,240);self.player.setVideoOutput(self.video);m.addWidget(self.video,1)
         self.caption=label('Importe os takes para começar.','title');m.addWidget(self.caption)
         self.seek=QSlider(Qt.Horizontal);self.seek.setRange(0,10000);self.seek.sliderMoved.connect(self.scrub);m.addWidget(self.seek)
         self.clock=label('0.0s');m.addWidget(row(button('▶ / Ⅱ',self.toggle),self.clock,button('Voltar ao take',lambda:self.play_clip(self.active))))
