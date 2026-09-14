@@ -126,6 +126,9 @@ class Studio(QMainWindow):
         self.caption=label('Importe os takes para começar.','title');m.addWidget(self.caption)
         self.seek=QSlider(Qt.Horizontal);self.seek.setRange(0,10000);self.seek.sliderMoved.connect(self.scrub);m.addWidget(self.seek)
         self.clock=label('0.0s');m.addWidget(row(button('▶ / Ⅱ',self.toggle),self.clock,button('Voltar ao take',lambda:self.play_clip(self.active))))
+        self.cut_level=QComboBox();self.cut_level.addItems(list(core.SILENCE_LEVELS));self.cut_level.setCurrentText('Médio')
+        m.addWidget(row(button('✂  Cortar silêncios automaticamente',self.auto_cut_silences,True),label('Intensidade'),self.cut_level))
+        m.addWidget(label('Remove as pausas entre as falas usando a transcrição. Ctrl+Z desfaz.','muted'))
         m.addWidget(row(button('Criar prévia leve',self.make_proxy),button('Prévia com efeitos',lambda:self.export(True))));m.addWidget(label('Player de takes segue a sequência; efeitos aparecem na prévia renderizada.'));split.addWidget(middle)
         right,r=panel();tabs=QTabWidget();r.addWidget(tabs);split.addWidget(right);split.setSizes([260,730,370])
         command=QWidget();cm=QVBoxLayout(command);self.prompt=QPlainTextEdit();self.prompt.setPlaceholderText('cortes e legenda; filtro quente');cm.addWidget(self.prompt);cm.addWidget(button('Aplicar comandos',self.commands));cm.addWidget(label('Comandos predefinidos. Transcreva antes de solicitar cortes. Takes sem palavras são preservados; revise imagens de apoio.'));tabs.addTab(command,'Comandos')
@@ -374,6 +377,23 @@ class Studio(QMainWindow):
             core.validate(candidate);self.checkpoint();self.p=candidate;self.restore_ui()
             self.status.setText(f"{entry.get('title','Recurso')} aplicado em {at_time:.1f}s. Clique em Prévia com efeitos.")
         except Exception as exc:self.error(exc)
+    def _mmss(self,seconds):
+        seconds=max(0,int(round(seconds)));return f'{seconds//60}:{seconds%60:02d}'
+    def auto_cut_silences(self):
+        """Corte automático de silêncios em 1 clique — o motor já existia
+        (native.suggest_cuts), agora com intensidade e sem ficar escondido em comando."""
+        if self.job:return
+        if not self.doc['clips']:return self.info('Importe os takes primeiro.')
+        if not any(c['words'] for c in self.doc['clips']):
+            return self.info('Para cortar silêncios, transcreva os takes antes — o corte usa os tempos das palavras.\n\nDica: ao importar, aceite "gerar legendas automaticamente", ou use "Transcrever" na aba Legendas.')
+        threshold=core.SILENCE_LEVELS.get(self.cut_level.currentText(),0.65)
+        before=native.length(self.doc)
+        self.mutate(lambda p:native.suggest_cuts(p,threshold=threshold))
+        after=native.length(self.doc);removed=before-after
+        if removed<0.05:
+            self.status.setText('Nenhuma pausa longa encontrada nessa intensidade — experimente "Agressivo".')
+        else:
+            self.status.setText(f'✂ Silêncios cortados: −{removed:.1f}s (de {self._mmss(before)} para {self._mmss(after)}). Ctrl+Z desfaz.')
     def commands(self):
         actions,unknown=core.commands(self.prompt.toPlainText())
         if unknown:return self.info('Pedidos não reconhecidos: '+', '.join(unknown))

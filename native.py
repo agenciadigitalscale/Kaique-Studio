@@ -111,13 +111,13 @@ def render(p,destination,progress=lambda _:None,preview=False):
                 else:q['sticker_end']=min(q['sticker_end'],q['duration'])
         return core.render(q,str(target),progress,False)
 
-def suggest_cuts(p):
+def suggest_cuts(p,threshold=0.65):
     if not any(c['words'] for c in p['clips']):raise ValueError('Transcreva os takes com fala antes de sugerir cortes.')
     result=[]
     for c in p['clips']:
         visible=[w for w in c['words'] if w['end']>c['in'] and w['start']<c['out']]
         if not visible:result.append(c);continue
-        for r in core.suggest_ranges(visible,c['duration']):
+        for r in core.suggest_ranges(visible,c['duration'],threshold=threshold):
             start=max(c['in'],r['start']);end=min(c['out'],r['end'])
             if end-start>.04:
                 part=copy.deepcopy(c);part.update(id=uuid.uuid4().hex,**{'in':start,'out':end});result.append(part)

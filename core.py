@@ -132,6 +132,12 @@ def duration(p):
     return sum(r['end']-r['start'] for r in p['ranges'] if r['enabled'])
 
 
+# Intensidade do corte automático de silêncios: quão longa uma pausa entre falas
+# precisa ser para virar corte. Menor = corta mais (mais agressivo). São os
+# valores por trás do controle Leve/Médio/Agressivo no editor.
+SILENCE_LEVELS = {'Leve': 1.0, 'Médio': 0.65, 'Agressivo': 0.35}
+
+
 def suggest_ranges(words, total, threshold=0.65, padding=0.12):
     """Only remove long gaps between recognized words. Not breath classification."""
     if not words:
