@@ -162,6 +162,7 @@ class Studio(QMainWindow):
         self.hub_key=QLineEdit(cfg['key']);self.hub_key.setEchoMode(QLineEdit.Password);self.hub_key.setPlaceholderText('Chave do Studio (X-Studio-Key)');hb.addWidget(label('Chave do Studio'));hb.addWidget(self.hub_key)
         hb.addWidget(button('Salvar ligação',self.save_hub_config))
         hb.addWidget(button('↻ Atualizar fila de edição',self.refresh_queue,True))
+        self.queue_search=QLineEdit();self.queue_search.setPlaceholderText('🔎 Filtrar por cliente ou título…');self.queue_search.textChanged.connect(self._populate_queue);hb.addWidget(self.queue_search)
         self.queue_list=QListWidget();self.queue_list.currentItemChanged.connect(self.describe_task);hb.addWidget(self.queue_list,1)
         self.queue_info=label('Configure a chave e clique em Atualizar para ver os cards em produção.');hb.addWidget(self.queue_info)
         hb.addWidget(row(button('Copiar nome do export',self.copy_export_name),button('Marcar como entregue',self.mark_delivered)))
@@ -426,11 +427,20 @@ class Studio(QMainWindow):
         cfg=bridge.save_config(STATE,self.hub_base.text(),self.hub_key.text())
         self.queue_info.setText('Buscando a fila no DS HUB…')
         def done(tasks):
-            self._queue=tasks;self.queue_list.clear()
-            for t in tasks:
-                it=QListWidgetItem(f"🎬 {t['cliente']} — {t['titulo']}  [{t['selo'] or '—'}]");it.setData(Qt.UserRole,t);self.queue_list.addItem(it)
-            self.queue_info.setText(f'{len(tasks)} card(s) em produção. Selecione um para pegar o nome do export.' if tasks else 'Nenhum card em produção (ou chave inválida). Confira a chave e o painel.')
+            self._queue=tasks;self._populate_queue()
         self.task(lambda progress:bridge.fetch_queue(base=cfg['base'],key=cfg['key'] or None),done)
+    def _populate_queue(self,*_):
+        tasks=getattr(self,'_queue',[]);q=core.normalized(self.queue_search.text());self.queue_list.clear()
+        shown=0
+        for t in tasks:
+            if q and q not in core.normalized(f"{t['cliente']} {t['titulo']} {t['selo']}"):continue
+            it=QListWidgetItem(f"🎬 {t['cliente']} — {t['titulo']}  [{t['selo'] or '—'}]");it.setData(Qt.UserRole,t);self.queue_list.addItem(it);shown+=1
+        if not tasks:
+            self.queue_info.setText('Nenhum card em produção (ou chave inválida). Confira a chave e o painel.')
+        elif q:
+            self.queue_info.setText(f'{shown} de {len(tasks)} card(s) — filtro "{self.queue_search.text().strip()}".')
+        else:
+            self.queue_info.setText(f'{len(tasks)} card(s) em produção. Filtre acima e selecione um para pegar o nome do export.')
     def _selected_task(self):
         it=self.queue_list.currentItem();return it.data(Qt.UserRole) if it else None
     def describe_task(self,*_):
