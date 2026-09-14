@@ -82,24 +82,36 @@ SOURCES = {
         ('Myinstants', 'https://www.myinstants.com/pt/search/?name={q}'),
         ('Pixabay (livre)', 'https://pixabay.com/sound-effects/search/{q}/'),
         ('Freesound (CC)', 'https://freesound.org/search/?q={q}'),
+        ('Mixkit (livre)', 'https://mixkit.co/free-sound-effects/{q}/'),
+        ('Zapsplat', 'https://www.zapsplat.com/?s={q}'),
     ],
     'Memes': [
         ('Myinstants', 'https://www.myinstants.com/pt/search/?name={q}'),
         ('Pixabay (livre)', 'https://pixabay.com/sound-effects/search/{q}/'),
+        ('Tenor (GIF)', 'https://tenor.com/search/{q}-gifs'),
     ],
     'Músicas': [
         ('Pixabay Music (livre)', 'https://pixabay.com/music/search/{q}/'),
         ('Free Music Archive', 'https://freemusicarchive.org/search?quicksearch={q}'),
+        ('Mixkit Music (livre)', 'https://mixkit.co/free-stock-music/{q}/'),
+        ('Chosic (CC)', 'https://www.chosic.com/free-music/?keyword={q}'),
     ],
     'Ícones': [
         ('Flaticon', 'https://www.flaticon.com/search?word={q}'),
         ('Google Imagens (uso livre)', 'https://www.google.com/search?tbm=isch&tbs=sur:fmc&q={q}'),
         ('Openverse (CC)', 'https://openverse.org/search/?q={q}'),
+        ('Icons8', 'https://icons8.com/icons/set/{q}'),
+        ('The Noun Project', 'https://thenounproject.com/search/?q={q}'),
     ],
     'Imagens': [
         ('Google Imagens (uso livre)', 'https://www.google.com/search?tbm=isch&tbs=sur:fmc&q={q}'),
         ('Openverse (CC)', 'https://openverse.org/search/?q={q}'),
         ('Pixabay (livre)', 'https://pixabay.com/images/search/{q}/'),
+        ('Unsplash (livre)', 'https://unsplash.com/s/photos/{q}'),
+        ('Pexels (livre)', 'https://www.pexels.com/search/{q}/'),
+    ],
+    'LUTs': [
+        ('FreshLUTs (grátis)', 'https://freshluts.com/luts?search={q}'),
     ],
 }
 
@@ -210,6 +222,11 @@ CAPTION_TEMPLATES = [
     {'name': 'Só palavras-chave', 'style': {'caption_mode': 'Palavras-chave', 'font_size': 32, 'captions_enabled': True}},
     {'name': 'Frase cheia (legenda de fala)', 'style': {'caption_mode': 'Frase', 'font_size': 24, 'captions_enabled': True}},
     {'name': 'Clean minimalista', 'style': {'caption_mode': 'Frase', 'caption_style': 'Realce', 'font_size': 22, 'captions_enabled': True}},
+    {'name': 'Impacto grande', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Contorno', 'font_size': 46, 'captions_enabled': True}},
+    {'name': 'Notícia (frase pequena)', 'style': {'caption_mode': 'Frase', 'caption_style': 'Contorno', 'font_size': 20, 'captions_enabled': True}},
+    {'name': 'Podcast (palavra ativa)', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Realce', 'font_size': 28, 'captions_enabled': True}},
+    {'name': 'Viral (pop grande)', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Pop', 'font_size': 40, 'captions_enabled': True}},
+    {'name': 'Sem legenda', 'style': {'captions_enabled': False}},
 ]
 
 

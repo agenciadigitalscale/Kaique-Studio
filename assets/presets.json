@@ -70,5 +70,77 @@
       "zoom": 1.05,
       "caption_style": "Contorno"
     }
+  },
+  {
+    "id": "preset_viral_tiktok",
+    "name": "Viral TikTok",
+    "category": "Impacto",
+    "description": "Cores vivas e legenda grande que cresce (Pop), estilo viral.",
+    "style": {
+      "filter": "Vívido",
+      "transition": "Nenhuma",
+      "caption_mode": "Palavra ativa",
+      "caption_style": "Pop",
+      "color": "#C9FF63",
+      "font_size": 40,
+      "zoom": 1.06
+    }
+  },
+  {
+    "id": "preset_teal_orange",
+    "name": "Cinema Teal & Orange",
+    "category": "Cinemático",
+    "description": "Aquele look de cinema (azul-esverdeado e laranja), legenda por frase.",
+    "style": {
+      "filter": "Teal & Orange",
+      "transition": "Preto",
+      "caption_mode": "Frase",
+      "color": "#EAF2FF",
+      "font_size": 22,
+      "zoom": 1.0
+    }
+  },
+  {
+    "id": "preset_verao",
+    "name": "Verão vibrante",
+    "category": "Natureza",
+    "description": "Luz de verão, saturação alta, palavras-chave em destaque.",
+    "style": {
+      "filter": "Verão",
+      "transition": "Nenhuma",
+      "caption_mode": "Palavras-chave",
+      "color": "#FFD24A",
+      "font_size": 30,
+      "zoom": 1.0
+    }
+  },
+  {
+    "id": "preset_noturno",
+    "name": "Noturno neon",
+    "category": "Cinemático",
+    "description": "Ambiente escuro e saturado, legenda com contorno forte.",
+    "style": {
+      "filter": "Noturno",
+      "transition": "Preto",
+      "caption_mode": "Palavra ativa",
+      "caption_style": "Contorno",
+      "color": "#06B6D4",
+      "font_size": 34,
+      "zoom": 1.03
+    }
+  },
+  {
+    "id": "preset_vintage",
+    "name": "Vintage VHS",
+    "category": "Cinemático",
+    "description": "Textura retrô com ruído, legenda por frase discreta.",
+    "style": {
+      "filter": "VHS retrô",
+      "transition": "Nenhuma",
+      "caption_mode": "Frase",
+      "color": "#F4F7FF",
+      "font_size": 22,
+      "zoom": 1.0
+    }
   }
 ]
