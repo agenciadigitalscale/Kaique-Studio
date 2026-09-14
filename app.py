@@ -137,7 +137,10 @@ class Studio(QMainWindow):
         edit=QWidget();e=QVBoxLayout(edit);e.addWidget(label('Clipe selecionado','title'));self.ins=QDoubleSpinBox();self.outs=QDoubleSpinBox()
         for w in [self.ins,self.outs]:w.setDecimals(3);w.setRange(0,100000);w.setSuffix(' s')
         e.addWidget(label('Entrada no arquivo original'));e.addWidget(self.ins);e.addWidget(label('Saída no arquivo original'));e.addWidget(self.outs)
-        e.addWidget(button('Aplicar corte',self.trim_fields));e.addWidget(button('Dividir no cursor',self.split_clip));e.addWidget(button('Restaurar take inteiro',self.reset_clip));e.addWidget(button('Desfazer • Ctrl+Z',self.undo));e.addStretch();tabs.addTab(edit,'Cortes')
+        e.addWidget(button('Aplicar corte',self.trim_fields));e.addWidget(button('Dividir no cursor',self.split_clip))
+        self.speed=QDoubleSpinBox();self.speed.setRange(0.5,2.0);self.speed.setSingleStep(0.1);self.speed.setDecimals(2);self.speed.setValue(1.0)
+        e.addWidget(label('Velocidade do take (0.5 = câmera lenta · 2.0 = rápido)'));e.addWidget(self.speed);e.addWidget(button('Aplicar velocidade',self.apply_speed))
+        e.addWidget(button('Restaurar take inteiro',self.reset_clip));e.addWidget(button('Desfazer • Ctrl+Z',self.undo));e.addStretch();tabs.addTab(edit,'Cortes')
         caption=QWidget();c=QVBoxLayout(caption);c.addWidget(button('Transcrever take',self.transcribe));c.addWidget(button('Transcrever todos os pendentes',lambda:self.transcribe(True),True))
         c.addWidget(label('Modelo de legenda pronto','title'));self.caption_template=QComboBox();self.caption_template.addItem('— escolher um modelo —');self.caption_template.addItems(library.caption_template_names());self.caption_template.activated.connect(self.pick_caption_template);c.addWidget(self.caption_template)
         self.words=QTableWidget(0,3);self.words.setHorizontalHeaderLabels(['Início','Fim','Palavra']);self.words.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch);c.addWidget(self.words)
@@ -202,6 +205,7 @@ class Studio(QMainWindow):
             words=[]
             for i in range(self.words.rowCount()):words.append(dict(start=float(self.words.item(i,0).text().replace(',','.')),end=float(self.words.item(i,1).text().replace(',','.')),text=self.words.item(i,2).text()))
             candidate['clips'][self.active]['words']=words
+            candidate['clips'][self.active]['speed']=round(self.speed.value(),2)
         if candidate['clips']:native.validate(candidate)
         if candidate!=self.doc:self.checkpoint();self.doc=candidate
     def sync_message(self):
@@ -232,7 +236,7 @@ class Studio(QMainWindow):
         self.effects.setText(f"Música: {Path(s['music']).name if s['music'] else 'nenhuma'}\nEfeitos sonoros: {len(s['sfx'])}\nLUT: {Path(s['lut']).name if s['lut'] else 'nenhuma'}\nTextos na tela: {len(s.get('titles',[]))}")
         self.words.setRowCount(0)
         if self.active>=0:
-            c=self.doc['clips'][self.active];self.ins.setValue(c['in']);self.outs.setValue(c['out']);self.words.setRowCount(len(c['words']))
+            c=self.doc['clips'][self.active];self.ins.setValue(c['in']);self.outs.setValue(c['out']);self.speed.setValue(float(c.get('speed',1.0)));self.words.setRowCount(len(c['words']))
             for i,w in enumerate(c['words']):
                 for j,value in enumerate([f"{w['start']:.3f}",f"{w['end']:.3f}",w['text']]):self.words.setItem(i,j,QTableWidgetItem(value))
         self.timeline.data=self.doc;self.timeline.active=self.active;self.timeline.update();self.loading=False
@@ -532,6 +536,11 @@ class Studio(QMainWindow):
     def clear_asset(self,key):
         try:self.sync();self.checkpoint();self.doc['style'][key]=[] if key in ('sfx','overlays','titles') else '';self.restore_ui()
         except Exception as exc:self.error(exc)
+    def apply_speed(self):
+        if self.active<0:return self.info('Selecione um take na lista.')
+        v=round(self.speed.value(),2)
+        self.mutate(lambda p:p['clips'][self.active].__setitem__('speed',v))
+        self.status.setText(f'Velocidade do take: {v}x (aplicada na exportação). Ctrl+Z desfaz.')
     def add_video_overlay(self):
         if not self.doc['clips']:return self.info('Importe os takes primeiro.')
         exts=' '.join('*'+x for x in sorted(core.VIDEO_EXT))

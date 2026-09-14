@@ -26,6 +26,7 @@ def validate(p):
         ids.add(c['id'])
         if not Path(c['source']).is_file():raise ValueError('Take não encontrado: '+c['source'])
         if not all(math.isfinite(float(c[k])) for k in ['in','out','duration']) or not 0<=c['in']<c['out']<=c['duration']+.001:raise ValueError('Corte fora dos limites do take.')
+        if not 0.5<=float(c.get('speed',1.0))<=2.0:raise ValueError('Velocidade do take fora da faixa (0.5–2.0).')
         end=0
         for w in c['words']:
             a,b=float(w['start']),float(w['end'])
@@ -91,16 +92,25 @@ def render(p,destination,progress=lambda _:None,preview=False):
             count=min(remain,c['out']-c['in']);remain-=count
             progress(f'Exportando take {i+1}/{len(p["clips"])}…')
             part=work/f'clip{i}.mp4'
-            core.run([exe,'-v','error','-nostdin','-ss',str(c['in']),'-i',c['source'],'-t',str(count),'-map','0:v:0','-map','0:a?','-c:v','libx264','-preset','veryfast','-crf','18','-threads','4','-c:a','aac',str(part)])
+            speed=float(c.get('speed',1.0));extra=[]
+            if abs(speed-1.0)>1e-3:  # câmera lenta (<1) ou acelerar (>1)
+                extra=['-filter:v',f'setpts=PTS/{speed}']
+                if core.probe(c['source'])['audio']:extra+=['-filter:a',f'atempo={speed}']
+            # -ss/-t como opções de ENTRADA (antes do -i): limitam o que é LIDO da
+            # fonte. Se -t ficasse na saída, a câmera lenta (mais longa) seria cortada.
+            core.run([exe,'-v','error','-nostdin','-ss',str(c['in']),'-t',str(count),'-i',c['source']]+extra+['-map','0:v:0','-map','0:a?','-c:v','libx264','-preset','veryfast','-crf','18','-threads','4','-c:a','aac',str(part)])
             paths.append(str(part))
         assembled=core.assemble(paths,work/'sequence.mp4',progress,canvas=core.target_dims(q.get('aspect','Original'),q.get('quality','Alta (1080p)')))
         # Frame-rate conversion can shift boundaries by a fraction of a frame.
         captions=[];ranges=[];offset=0
         for c,t in zip(p['clips'],assembled['takes']):
-            duration=t['end']-t['start'];limit=min(c['out'],c['in']+duration)
+            # A velocidade comprime/estica o tempo: uma palavra em `a` (tempo do
+            # arquivo) aparece em (a-in)/speed na sequência. Sem dividir por speed
+            # a legenda dessincroniza. Para speed=1 isto é idêntico ao de antes.
+            s=float(c.get('speed',1.0));rendered=t['end']-t['start'];limit=min(c['out'],c['in']+rendered*s)
             for w in c['words']:
                 a,b=max(w['start'],c['in']),min(w['end'],limit)
-                if b-a>.005:captions.append(dict(start=offset+a-c['in'],end=offset+b-c['in'],text=w['text']))
+                if b-a>.005:captions.append(dict(start=offset+(a-c['in'])/s,end=offset+(b-c['in'])/s,text=w['text']))
             ranges.append(dict(start=t['start'],end=t['end'],enabled=True));offset=t['end']
         q.update(source=assembled['source'],duration=assembled['duration'],width=assembled['width'],height=assembled['height'],words=captions,ranges=ranges)
         # Preview can exclude sound effects and clamp sticker at its endpoint.
