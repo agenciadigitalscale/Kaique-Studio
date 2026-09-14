@@ -141,7 +141,7 @@ class Studio(QMainWindow):
         self.words=QTableWidget(0,3);self.words.setHorizontalHeaderLabels(['Início','Fim','Palavra']);self.words.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch);c.addWidget(self.words)
         c.addWidget(button('Salvar palavras',self.sync_message));self.mode=QComboBox();self.mode.addItems(['Palavra ativa','Palavras-chave','Frase']);c.addWidget(self.mode)
         self.caption_style=QComboBox();self.caption_style.addItems(core.CAPTION_STYLES);c.addWidget(label('Animação da legenda (no modo Palavra ativa)'));c.addWidget(self.caption_style)
-        self.keywords=QLineEdit();self.keywords.setPlaceholderText('Palavras-chave separadas por vírgula');c.addWidget(self.keywords)
+        self.keywords=QLineEdit();self.keywords.setPlaceholderText('Palavras-chave (vírgula) — vazio = destaque automático');c.addWidget(self.keywords)
         self.font=QSpinBox();self.font.setRange(10,50);c.addWidget(label('Tamanho da legenda'));c.addWidget(self.font)
         self.enabled=QCheckBox('Legendas na exportação');c.addWidget(self.enabled);tabs.addTab(caption,'Legendas')
         image=QWidget();im=QVBoxLayout(image);self.look=QComboBox();self.look.addItems(core.FILTERS);im.addWidget(label('Filtro'));im.addWidget(self.look)

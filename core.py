@@ -257,6 +257,37 @@ def polish_words(words):
     return out
 
 
+# Palavras "vazias" (stopwords) do português — artigos, preposições, pronomes,
+# conjunções e verbos de apoio. Não são o que se quer destacar numa legenda; o
+# destaque automático guarda o resto (substantivos, verbos plenos, adjetivos).
+_STOPWORDS_PT = {
+    'a','o','as','os','um','uma','uns','umas','de','do','da','dos','das','em','no','na','nos','nas',
+    'ao','aos','pra','para','por','pelo','pela','pelos','pelas','com','sem','sob','sobre','entre','ate','ate',
+    'e','ou','mas','que','se','como','quando','onde','porque','pois','entao','tambem','nem','ja','la','ali','aqui',
+    'eu','tu','ele','ela','nos','vos','eles','elas','voce','voces','me','te','lhe','nos','vos','meu','minha','teu',
+    'seu','sua','seus','suas','dele','dela','deles','delas','este','esta','estes','estas','esse','essa','esses',
+    'essas','isso','isto','aquilo','aquele','aquela','ser','sou','somos','sao','foi','era','sera','ter','tem','tinha',
+    'estar','esta','estao','muito','muita','mais','menos','todo','toda','todos','todas','cada','bem','ainda','so',
+    'nao','sim','vai','vou','ir','fazer','faz','ficar','fica','coisa','ai',
+}
+
+
+def content_keywords(texts):
+    """Escolhe automaticamente as palavras 'de conteúdo' de uma fala.
+
+    Descarta stopwords e palavras muito curtas — o que sobra (substantivos,
+    verbos plenos, adjetivos) é o que merece destaque na legenda. Devolve as
+    chaves NORMALIZADAS (minúsculas, sem acento, sem pontuação), no mesmo formato
+    que `make_ass` usa para casar palavra por palavra.
+    """
+    out = set()
+    for text in texts:
+        key = normalized(text).strip('.,!?;:"\'()[]')
+        if len(key) >= 4 and key not in _STOPWORDS_PT:
+            out.add(key)
+    return out
+
+
 def group_words(words, max_words=5, max_chars=30, gap=0.45):
     """Agrupa as palavras em frases curtas e legíveis — a 'legenda inteligente'.
 
@@ -301,6 +332,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     words = mapped_words(p)
     groups = group_words(words)
     keywords = set(re.findall(r'\w+',normalized(p['keywords'])))
+    # Sem palavras-chave digitadas? O modo 'Palavras-chave' escolhe sozinho as
+    # palavras de conteúdo — o destaque automático, sem o editor ter que pensar.
+    if not keywords and p['caption_mode']=='Palavras-chave':
+        keywords = content_keywords(w['text'] for w in words)
     accent=ass_color(p['color'])
     # A decoração da palavra ativa muda com caption_style. Vale no modo
     # 'Palavra ativa', o único que anima palavra a palavra — os outros mostram
