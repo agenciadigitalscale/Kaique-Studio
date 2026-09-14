@@ -156,7 +156,8 @@ class Studio(QMainWindow):
         self.transition=QComboBox();self.transition.addItems(['Nenhuma','Preto','Branco']);im.addWidget(label('Transição entre clipes'));im.addWidget(self.transition)
         self.volume=QSlider(Qt.Horizontal);self.volume.setRange(0,100);im.addWidget(label('Volume da música'));im.addWidget(self.volume)
         self.music_fade=QDoubleSpinBox();self.music_fade.setRange(0,10);self.music_fade.setDecimals(1);self.music_fade.setSingleStep(0.5);self.music_fade.setSuffix(' s');im.addWidget(label('Fade da música (entrada/saída suave)'));im.addWidget(self.music_fade)
-        im.addWidget(button('Remover música',lambda:self.clear_asset('music')));im.addWidget(button('Remover LUT',lambda:self.clear_asset('lut')));im.addWidget(button('Remover efeitos sonoros',lambda:self.clear_asset('sfx')));im.addWidget(button('Remover imagens/ícones',lambda:self.clear_asset('overlays')))
+        im.addWidget(button('➕ Vídeo sobreposto (b-roll / meme)',self.add_video_overlay,True))
+        im.addWidget(button('Remover música',lambda:self.clear_asset('music')));im.addWidget(button('Remover LUT',lambda:self.clear_asset('lut')));im.addWidget(button('Remover efeitos sonoros',lambda:self.clear_asset('sfx')));im.addWidget(button('Remover imagens/ícones/vídeos',lambda:self.clear_asset('overlays')))
         self.effects=label('');im.addWidget(self.effects);im.addStretch();tabs.addTab(image,'Imagem/áudio')
         script=QWidget();sc=QVBoxLayout(script);self.client=QLineEdit();self.client.setPlaceholderText('Cliente / projeto');sc.addWidget(self.client);self.script=QPlainTextEdit();self.script.setPlaceholderText('Roteiro de referência');sc.addWidget(self.script);tabs.addTab(script,'Projeto')
         hub=QWidget();hb=QVBoxLayout(hub)
@@ -530,6 +531,25 @@ class Studio(QMainWindow):
         self.mutate(apply)
     def clear_asset(self,key):
         try:self.sync();self.checkpoint();self.doc['style'][key]=[] if key in ('sfx','overlays','titles') else '';self.restore_ui()
+        except Exception as exc:self.error(exc)
+    def add_video_overlay(self):
+        if not self.doc['clips']:return self.info('Importe os takes primeiro.')
+        exts=' '.join('*'+x for x in sorted(core.VIDEO_EXT))
+        path,_=QFileDialog.getOpenFileName(self,'Vídeo sobreposto','',f'Vídeos ({exts})')
+        if not path:return
+        corner,ok=QInputDialog.getItem(self,'Sobreposição','Posição na tela:',list(core.CORNERS),0,False)
+        if not ok:return
+        total=core.duration(self.p)
+        start,ok=QInputDialog.getDouble(self,'Vídeo sobreposto','Aparece a partir de (segundo):',0,0,max(0,total-.01),1)
+        if not ok:return
+        end,ok=QInputDialog.getDouble(self,'Vídeo sobreposto','Some em (segundo):',min(total,start+5),start+.1,total,1)
+        if not ok:return
+        width,ok=QInputDialog.getInt(self,'Vídeo sobreposto','Largura na tela (px):',360,60,600,20)
+        if not ok:return
+        try:
+            self.sync();self.checkpoint()
+            self.doc['style'].setdefault('overlays',[]).append(dict(path=path,start=start,end=end,corner=corner,width=width))
+            native.validate(self.doc);self.restore_ui();self.status.setText('Vídeo sobreposto adicionado. Clique em "Prévia com efeitos".')
         except Exception as exc:self.error(exc)
     def add_title(self):
         if not self.doc['clips']:return self.info('Importe os takes primeiro.')

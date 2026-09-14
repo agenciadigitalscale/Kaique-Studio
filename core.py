@@ -47,6 +47,9 @@ def project():
 # O valor é o código de alinhamento do ASS: 8=topo, 5=centro, 2=rodapé (centralizados).
 TITLE_POSITIONS = {'Topo': 8, 'Centro': 5, 'Rodapé': 2}
 
+# Extensões de VÍDEO — uma sobreposição com essas toca como b-roll (sem -loop 1).
+VIDEO_EXT = {'.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v'}
+
 
 def ffmpeg():
     candidate = shutil.which('ffmpeg')
@@ -480,7 +483,11 @@ def render(p, destination, progress=lambda s:None, preview=False):
         overlay_inputs=[]
         for o in overlays_of(p):
             overlay_inputs.append((input_index,o));input_index+=1
-            args+=['-loop','1','-i',o['path']]
+            # Vídeo sobreposto (b-roll/meme) toca normal; imagem estática entra em loop.
+            if Path(o['path']).suffix.lower() in VIDEO_EXT:
+                args+=['-i',o['path']]
+            else:
+                args+=['-loop','1','-i',o['path']]
         filters=[]
         vf=[]
         if p['zoom']>1.001:
@@ -498,7 +505,10 @@ def render(p, destination, progress=lambda s:None, preview=False):
                 width=int(o.get('width',180));corner=CORNERS[o.get('corner','Superior direito')]
                 filters.append(f'[{idx}:v]scale={width}:-1[ov{n}]')
                 out='[outv]' if n==len(overlay_inputs)-1 else f'[ovbase{n}]'
-                filters.append(f"{current}[ov{n}]overlay={corner}:enable='between(t,{o['start']},{o['end']})':shortest=1{out}")
+                # imagem em loop precisa de shortest=1 (senão fica infinita); vídeo
+                # NÃO — com shortest=1 ele cortaria a base ao acabar. -t já limita a saída.
+                short=0 if Path(o['path']).suffix.lower() in VIDEO_EXT else 1
+                filters.append(f"{current}[ov{n}]overlay={corner}:enable='between(t,{o['start']},{o['end']})':shortest={short}{out}")
                 current=out
         else:
             filters.append('[basev]null[outv]')
