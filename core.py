@@ -232,6 +232,31 @@ def safe_text(t):
 _SENTENCE_END = re.compile(r'[.!?…]+["\')\]]*$')
 
 
+def _capitalize_first(text):
+    """Deixa maiúscula a primeira LETRA (pulando aspas/parênteses iniciais)."""
+    for i, ch in enumerate(text):
+        if ch.isalpha():
+            return text[:i] + ch.upper() + text[i+1:]
+    return text
+
+
+def polish_words(words):
+    """Capitaliza o começo de cada frase — a parte segura da 'pontuação automática'.
+
+    Deixa maiúscula a primeira palavra e a que vem depois de fim de frase (. ! ?).
+    De propósito NÃO inventa vírgulas nem pontos: restaurar pontuação de forma
+    confiável exigiria um modelo, e chutar pontuação erraria mais do que ajudaria.
+    O Whisper já emite parte da pontuação em pt; aqui só arrumamos as maiúsculas.
+    Devolve uma lista NOVA (não muta a original).
+    """
+    out, start_sentence = [], True
+    for w in words:
+        text = _capitalize_first(w['text']) if start_sentence and w['text'] else w['text']
+        out.append(dict(w, text=text))
+        start_sentence = bool(_SENTENCE_END.search(text))
+    return out
+
+
 def group_words(words, max_words=5, max_chars=30, gap=0.45):
     """Agrupa as palavras em frases curtas e legíveis — a 'legenda inteligente'.
 
@@ -324,7 +349,7 @@ def transcribe(source, progress):
                 words.append(dict(start=round(start,3),end=round(float(w.end),3),text=w.word.strip()))
     if not words:
         raise ValueError('Nenhuma fala detectada. Confira o áudio do vídeo.')
-    return words
+    return polish_words(words)  # capitaliza o início de cada frase
 
 
 def render(p, destination, progress=lambda s:None, preview=False):
