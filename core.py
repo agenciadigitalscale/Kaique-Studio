@@ -227,6 +227,37 @@ def safe_text(t):
     return t.replace('\\','／').replace('{','(').replace('}',')').replace('\n',' ')
 
 
+# Fim de frase: ponto/exclamação/interrogação/reticências, com aspas ou parêntese
+# de fechamento depois. Quebrar a legenda aqui deixa cada frase inteira na tela.
+_SENTENCE_END = re.compile(r'[.!?…]+["\')\]]*$')
+
+
+def group_words(words, max_words=5, max_chars=30, gap=0.45):
+    """Agrupa as palavras em frases curtas e legíveis — a 'legenda inteligente'.
+
+    Em vez de palavra-a-palavra ou de um bloco fixo de N, quebra onde a leitura
+    pede: fim de frase (. ! ?), pausa longa (`gap`), estouro de palavras
+    (`max_words`) ou de largura (`max_chars`, para a linha não transbordar a tela).
+    Função pura: recebe as palavras já mapeadas para o tempo final e devolve
+    listas de palavras. `make_ass` desenha; a decisão de quebra fica aqui, testável.
+    """
+    groups = []
+    for word in words:
+        cur = groups[-1] if groups else None
+        if cur is None:
+            groups.append([word]); continue
+        cur_chars = sum(len(w['text']) for w in cur) + (len(cur) - 1)  # com os espaços
+        would_be = cur_chars + 1 + len(word['text'])
+        if (_SENTENCE_END.search(cur[-1]['text'])
+                or len(cur) >= max_words
+                or would_be > max_chars
+                or (word['start'] - cur[-1]['end']) > gap):
+            groups.append([word])
+        else:
+            cur.append(word)
+    return groups
+
+
 def make_ass(p):
     canvas_width = max(180,round(720*p.get('width',384)/max(1,p.get('height',288))))
     head = f'''[Script Info]
@@ -243,11 +274,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     if not p['captions_enabled']:
         return head
     words = mapped_words(p)
-    groups = []
-    for word in words:
-        if not groups or len(groups[-1])>=4 or word['start']-groups[-1][-1]['end']>0.35:
-            groups.append([])
-        groups[-1].append(word)
+    groups = group_words(words)
     keywords = set(re.findall(r'\w+',normalized(p['keywords'])))
     accent=ass_color(p['color'])
     # A decoração da palavra ativa muda com caption_style. Vale no modo
