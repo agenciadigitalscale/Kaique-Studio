@@ -2,7 +2,7 @@ from __future__ import annotations
 import copy,json,sys,time,uuid
 from pathlib import Path
 from PySide6.QtCore import Qt,QUrl,QTimer,Signal,QRectF
-from PySide6.QtGui import QPainter,QColor,QPen,QPixmap,QAction,QKeySequence
+from PySide6.QtGui import QPainter,QColor,QPen,QPixmap,QAction,QKeySequence,QShortcut
 from PySide6.QtWidgets import (QApplication,QMainWindow,QWidget,QVBoxLayout,QHBoxLayout,QSplitter,
  QLabel,QPushButton,QListWidget,QListWidgetItem,QAbstractItemView,QTabWidget,QLineEdit,QPlainTextEdit,
  QTableWidget,QTableWidgetItem,QHeaderView,QDoubleSpinBox,QComboBox,QSpinBox,QCheckBox,QScrollArea,
@@ -17,6 +17,7 @@ class ClipList(QListWidget):
     moved=Signal(int,int)
     def __init__(self):
         super().__init__();self.setDragDropMode(QAbstractItemView.InternalMove)
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)  # Ctrl+A / Shift / Ctrl clique
     def dropEvent(self,event):
         old=self.currentRow();target=self.indexAt(event.position().toPoint()).row()
         if target<0:target=self.count()-1
@@ -117,12 +118,12 @@ class Studio(QMainWindow):
         center=QWidget();self.setCentralWidget(center);main=QVBoxLayout(center)
         main.addWidget(row(label('KAIQUE / STUDIO','brand'),label('0.6 • BIBLIOTECA VIVA'),button('Novo',self.new),button('Abrir',self.load),button('Salvar',self.save),button('Ajuda',self.help),button('Exportar MP4',lambda:self.export(False),True)))
         self.workspace=QWidget();layout=QVBoxLayout(self.workspace);main.addWidget(self.workspace,1)
-        split=QSplitter(Qt.Horizontal);layout.addWidget(split,1)
+        split=QSplitter(Qt.Horizontal)
         left,l=panel();l.addWidget(button('+ Importar vários takes',self.import_takes,True));self.clips=ClipList();self.clips.currentRowChanged.connect(self.select);self.clips.moved.connect(self.move)
         self.clips.setContextMenuPolicy(Qt.CustomContextMenu);self.clips.customContextMenuRequested.connect(self.clips_menu);l.addWidget(self.clips,1)
         l.addWidget(row(button('↑',lambda:self.move(self.active,self.active-1)),button('↓',lambda:self.move(self.active,self.active+1)),button('Remover',self.remove)))
         l.addWidget(button('Biblioteca de recursos',self.open_library));l.addWidget(label('Arraste para reordenar. Cortes e palavras acompanham cada take.'));split.addWidget(left)
-        middle,m=panel();self.badge=label('PLAYER / TAKE','title');m.addWidget(self.badge);self.video=QVideoWidget();self.video.setMinimumSize(320,220);self.player.setVideoOutput(self.video);m.addWidget(self.video,1)
+        middle,m=panel();self.badge=label('PLAYER / TAKE','title');m.addWidget(self.badge);self.video=QVideoWidget();self.video.setMinimumSize(360,420);self.player.setVideoOutput(self.video);m.addWidget(self.video,1)
         self.caption=label('Importe os takes para começar.','title');m.addWidget(self.caption)
         self.seek=QSlider(Qt.Horizontal);self.seek.setRange(0,10000);self.seek.sliderMoved.connect(self.scrub);m.addWidget(self.seek)
         self.clock=label('0.0s');m.addWidget(row(button('▶ / Ⅱ',self.toggle),self.clock,button('Voltar ao take',lambda:self.play_clip(self.active))))
@@ -131,7 +132,7 @@ class Studio(QMainWindow):
         m.addWidget(row(button('✂  Cortar silêncios automaticamente',self.auto_cut_silences,True),label('Intensidade'),self.cut_level))
         m.addWidget(label('Legendar tudo: transcreve e já aplica um estilo. Cortar silêncios: remove as pausas. Ctrl+Z desfaz.','muted'))
         m.addWidget(row(button('Criar prévia leve',self.make_proxy),button('Prévia com efeitos',lambda:self.export(True))));m.addWidget(label('Player de takes segue a sequência; efeitos aparecem na prévia renderizada.'));split.addWidget(middle)
-        right,r=panel();tabs=QTabWidget();r.addWidget(tabs);split.addWidget(right);split.setSizes([260,730,370])
+        right,r=panel();tabs=QTabWidget();r.addWidget(tabs);split.addWidget(right);split.setSizes([230,880,380]);split.setStretchFactor(1,1)
         command=QWidget();cm=QVBoxLayout(command);self.prompt=QPlainTextEdit();self.prompt.setPlaceholderText('cortes e legenda; filtro quente');cm.addWidget(self.prompt);cm.addWidget(button('Aplicar comandos',self.commands));cm.addWidget(label('Comandos predefinidos. Transcreva antes de solicitar cortes. Takes sem palavras são preservados; revise imagens de apoio.'));tabs.addTab(command,'Comandos')
         edit=QWidget();e=QVBoxLayout(edit);e.addWidget(label('Clipe selecionado','title'));self.ins=QDoubleSpinBox();self.outs=QDoubleSpinBox()
         for w in [self.ins,self.outs]:w.setDecimals(3);w.setRange(0,100000);w.setSuffix(' s')
@@ -151,13 +152,22 @@ class Studio(QMainWindow):
         im.addWidget(button('Remover música',lambda:self.clear_asset('music')));im.addWidget(button('Remover LUT',lambda:self.clear_asset('lut')));im.addWidget(button('Remover efeitos sonoros',lambda:self.clear_asset('sfx')));im.addWidget(button('Remover imagens/ícones',lambda:self.clear_asset('overlays')))
         self.effects=label('');im.addWidget(self.effects);im.addStretch();tabs.addTab(image,'Imagem/áudio')
         script=QWidget();sc=QVBoxLayout(script);self.client=QLineEdit();self.client.setPlaceholderText('Cliente / projeto');sc.addWidget(self.client);self.script=QPlainTextEdit();self.script.setPlaceholderText('Roteiro de referência');sc.addWidget(self.script);tabs.addTab(script,'Projeto')
-        layout.addWidget(label('TIMELINE • arraste o centro para reordenar / bordas para aparar','title'))
-        zoom=QSlider(Qt.Horizontal);zoom.setRange(1,8);zoom.setValue(1);zoom.valueChanged.connect(self.zoom_timeline);layout.addWidget(row(label('Zoom da timeline'),zoom))
+        # A parte de baixo (timeline) fica num painel próprio, separado do topo por
+        # um splitter VERTICAL: dá pra arrastar e dar mais espaço ao player ou à timeline.
+        bottom=QWidget();bl=QVBoxLayout(bottom);bl.setContentsMargins(0,6,0,0)
+        bl.addWidget(label('TIMELINE • arraste o centro para reordenar / bordas para aparar','title'))
+        zoom=QSlider(Qt.Horizontal);zoom.setRange(1,8);zoom.setValue(1);zoom.valueChanged.connect(self.zoom_timeline);bl.addWidget(row(label('Zoom da timeline'),zoom))
         self.timeline=Timeline();self.timeline.selected.connect(self.seek_clip);self.timeline.moved.connect(self.move);self.timeline.trimmed.connect(self.trim);self.timeline.dropped.connect(self.drop_resource)
-        self.scroll=QScrollArea();self.scroll.setWidgetResizable(True);self.scroll.setWidget(self.timeline);self.scroll.setMinimumHeight(265);self.scroll.setMaximumHeight(295);layout.addWidget(self.scroll)
+        self.scroll=QScrollArea();self.scroll.setWidgetResizable(True);self.scroll.setWidget(self.timeline);self.scroll.setMinimumHeight(180);bl.addWidget(self.scroll,1)
+        vsplit=QSplitter(Qt.Vertical);vsplit.addWidget(split);vsplit.addWidget(bottom);vsplit.setStretchFactor(0,1);vsplit.setSizes([680,300]);layout.addWidget(vsplit,1)
         self.status=label('Pronto');self.progress=QProgressBar();self.progress.setRange(0,1);main.addWidget(row(self.status,self.progress))
         for key,fn in [('Ctrl+S',self.save),('Ctrl+Z',self.undo),('Ctrl+B',self.split_clip)]:
             action=QAction(self);action.setShortcut(QKeySequence(key));action.triggered.connect(fn);self.addAction(action)
+        # Copiar/colar/apagar takes: escopo NA LISTA (WidgetWithChildrenShortcut) para
+        # não sequestrar Ctrl+C/Ctrl+V/Delete de quem está digitando roteiro ou legenda.
+        for key,fn in [('Ctrl+C',self.copy_clips),('Ctrl+V',self.paste_clips),('Del',self.remove_selected)]:
+            sc=QShortcut(QKeySequence(key),self.clips);sc.setContext(Qt.WidgetWithChildrenShortcut);sc.activated.connect(fn)
+        self._clipboard=[]
     def zoom_timeline(self,value):self.timeline.setMinimumWidth(max(900,self.scroll.viewport().width())*value)
     def error(self,message):QMessageBox.warning(self,'Confira',str(message))
     def info(self,message):QMessageBox.information(self,'Kaique Studio',message)
@@ -267,6 +277,29 @@ class Studio(QMainWindow):
             if QMessageBox.question(self,'Remover take','Remover o único take deixa o projeto vazio. Continuar?')!=QMessageBox.Yes:return
             self.checkpoint();self.doc['clips']=[];self.active=-1;self.player.stop();self.player.setSource(QUrl());self.restore_ui();return
         self.mutate(lambda p:p['clips'].pop(index))
+    def _selected_rows(self):
+        return sorted({i.row() for i in self.clips.selectedIndexes() if 0<=i.row()<len(self.doc['clips'])})
+    def copy_clips(self):
+        rows=self._selected_rows()
+        if not rows:return
+        self._clipboard=[copy.deepcopy(self.doc['clips'][r]) for r in rows]
+        self.status.setText(f'{len(self._clipboard)} take(s) copiado(s). Ctrl+V cola depois do selecionado.')
+    def paste_clips(self):
+        if self.job or not self._clipboard:return
+        rows=self._selected_rows();at=(rows[-1]+1) if rows else len(self.doc['clips'])
+        clip=list(self._clipboard)
+        def do(p):
+            for k,c in enumerate(clip):
+                nc=copy.deepcopy(c);nc['id']=uuid.uuid4().hex;p['clips'].insert(at+k,nc)
+        self.mutate(do);self.status.setText(f'{len(clip)} take(s) colado(s).')
+    def remove_selected(self):
+        rows=self._selected_rows()
+        if not rows:return
+        if len(rows)==1:return self.remove(rows[0])
+        if len(rows)>=len(self.doc['clips']):
+            if QMessageBox.question(self,'Remover takes','Remover todos os takes deixa o projeto vazio. Continuar?')!=QMessageBox.Yes:return
+            self.checkpoint();self.doc['clips']=[];self.active=-1;self.player.stop();self.player.setSource(QUrl());self.restore_ui();return
+        self.mutate(lambda p:[p['clips'].pop(r) for r in reversed(rows)])
     def duplicate_clip(self,index):
         if not 0<=index<len(self.doc['clips']):return
         def dup(p):
@@ -478,11 +511,11 @@ class Studio(QMainWindow):
             if preview:self.preview_mode=True;self.pending_seek=None;self.player.setSource(QUrl.fromLocalFile(path));self.badge.setText('PRÉVIA COM EFEITOS / até 10s');self.player.play()
             else:self.info('Exportado: '+path)
         self.task(lambda progress:native.render(snapshot,path,progress,preview),done)
-    def help(self):self.info('Importe takes → organize arrastando → ajuste as bordas → transcreva → revise → exporte.\n\nCtrl+B divide, Ctrl+Z desfaz, Ctrl+S salva.\nAs palavras usam o tempo original de cada take.\nMúsica e efeitos usam o tempo final da sequência: revise após mudar os cortes.\n\nCriar prévia leve gera uma cópia de até 640 px do take selecionado. A exportação usa os originais.\n\nAbrir também importa projetos 0.2–0.4 usando a sequência antiga. Salve como um novo projeto 0.5.\nRecuperação: '+str(STATE/'recuperacao-v05.json'))
+    def help(self):self.info('Importe takes → organize arrastando → ajuste as bordas → transcreva → revise → exporte.\n\nATALHOS: Ctrl+B divide · Ctrl+Z desfaz · Ctrl+S salva. Na lista de takes: Ctrl+A seleciona tudo · Ctrl+C copia · Ctrl+V cola · Delete remove.\nArraste as bordas dos painéis para redimensionar; a divisória horizontal ajusta player × timeline.\nAs palavras usam o tempo original de cada take.\nMúsica e efeitos usam o tempo final da sequência: revise após mudar os cortes.\n\nCriar prévia leve gera uma cópia de até 640 px do take selecionado. A exportação usa os originais.\n\nAbrir também importa projetos 0.2–0.4 usando a sequência antiga. Salve como um novo projeto 0.5.\nRecuperação: '+str(STATE/'recuperacao-v05.json'))
     def closeEvent(self,event):
         if self.job:self.info('Aguarde a tarefa terminar.');event.ignore();return
         if not self.discard_ok():event.ignore();return
         self.player.stop();event.accept()
 
 if __name__=='__main__':
-    app=QApplication(sys.argv);app.setStyle('Fusion');app.setStyleSheet(STYLE);w=Studio();w.show();sys.exit(app.exec())
+    app=QApplication(sys.argv);app.setStyle('Fusion');app.setStyleSheet(STYLE);w=Studio();w.showMaximized();sys.exit(app.exec())
