@@ -71,6 +71,39 @@ def caption_active_tag(style, accent):
         'Encolher':        '{' + A + r'\fscx122\fscy122\t(0,120,\fscx96\fscy96)\t(120,200,\fscx100\fscy100)}',
     }
     return tags.get(style, tags['Realce'])
+
+
+CAPTION_COLOR_MODES = ['Única', 'Alternada', 'Arco-íris']
+_RAINBOW = ['#FF5252', '#FF9800', '#FFEB3B', '#4CAF50', '#29B6F6', '#AB47BC']
+_ALTERNADA = ['#FFD24A', '#4FC3F7', '#FF6EC7']  # ciclo além da cor base
+
+
+def caption_color_for(mode, index, base):
+    """Cor (hex) da palavra nº `index`. 'Única' = cor base; 'Alternada'/'Arco-íris'
+    variam por palavra, o efeito colorido tipo Reels."""
+    if mode == 'Arco-íris':
+        return _RAINBOW[index % len(_RAINBOW)]
+    if mode == 'Alternada':
+        return ([base] + _ALTERNADA)[index % (len(_ALTERNADA) + 1)]
+    return base
+
+
+# Palavra → emoji (chaves normalizadas: minúsculas, sem acento).
+EMOJI_MAP = {
+    'fogo': '🔥', 'top': '🔥', 'quente': '🔥', 'incrivel': '🤯', 'chocante': '🤯',
+    'dinheiro': '💰', 'money': '💰', 'lucro': '💰', 'preco': '💲', 'gratis': '🎁',
+    'amor': '❤️', 'coracao': '❤️', 'love': '❤️', 'feliz': '😄', 'risada': '😂',
+    'triste': '😢', 'chorando': '😭', 'atencao': '⚠️', 'cuidado': '⚠️', 'novo': '✨',
+    'ideia': '💡', 'dica': '💡', 'certo': '✅', 'sim': '✅', 'nao': '❌', 'errado': '❌',
+    'tempo': '⏰', 'rapido': '⚡', 'forte': '💪', 'estrela': '⭐', 'melhor': '🏆',
+    'foguete': '🚀', 'crescer': '📈', 'olho': '👀', 'presente': '🎁', 'festa': '🎉',
+}
+
+
+def emoji_for(text):
+    """Emoji para uma palavra, ou '' se não houver. Ignora pontuação e acento."""
+    key = normalized(str(text)).strip('.,!?;:"\'()[]')
+    return EMOJI_MAP.get(key, '')
 CORNERS = {'Superior direito': 'W-w-24:24', 'Superior esquerdo': '24:24',
            'Inferior direito': 'W-w-24:H-h-24', 'Inferior esquerdo': '24:H-h-24'}
 
@@ -93,7 +126,7 @@ def project():
                 color='#C9FF63', font_size=22, caption_mode='Palavra ativa', caption_style='Realce', keywords='',
                 filter='Original', transition='Nenhuma', zoom=1.0, captions_enabled=True,
                 aspect='Original', quality='Alta (1080p)', titles=[], normalize_audio=True, denoise=True,
-                caption_pos='Embaixo')
+                caption_pos='Embaixo', caption_colors='Única', caption_emojis=False)
 
 
 # Posição vertical da legenda da fala — (alinhamento ASS, margem). Deixa a pessoa
@@ -169,6 +202,8 @@ def validate(p, files=True):
         raise ValueError('Animação de legenda inválida.')
     if p.get('caption_pos', 'Embaixo') not in CAPTION_POSITIONS:
         raise ValueError('Posição de legenda inválida.')
+    if p.get('caption_colors', 'Única') not in CAPTION_COLOR_MODES:
+        raise ValueError('Modo de cor da legenda inválido.')
     if p.get('aspect', 'Original') not in ASPECT_CHOICES:
         raise ValueError('Proporção de saída inválida.')
     if p.get('quality', 'Alta (1080p)') not in QUALITY_CHOICES:
@@ -435,26 +470,36 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     # A decoração da palavra ativa muda com caption_style. Vale no modo
     # 'Palavra ativa', o único que anima palavra a palavra — os outros mostram
     # o grupo inteiro de uma vez, onde animar por palavra não faz sentido.
-    active_tag=caption_active_tag(p.get('caption_style','Realce'),accent)
+    style=p.get('caption_style','Realce')
+    color_mode=p.get('caption_colors','Única')
+    emojis=bool(p.get('caption_emojis',False))
+    def wtext(x):  # texto da palavra, com emoji ao lado quando ligado
+        e=emoji_for(x['text']) if emojis else ''
+        return safe_text(x['text'])+(' '+e if e else '')
     def line(a,b,text):
         if b-a<0.005:
             return ''
         return f'Dialogue: 0,{ass_time(a)},{ass_time(b)},Main,,0,0,0,,{text}\n'
+    wi=0  # índice global da palavra, para as cores que variam por palavra
     for group in groups:
         if p['caption_mode']=='Palavra ativa':
             for i,w in enumerate(group):
+                wacc=ass_color(caption_color_for(color_mode,wi+i,p['color']))
+                atag=caption_active_tag(style,wacc)
                 tokens=[]
                 for j,x in enumerate(group):
-                    tag=active_tag if i==j else r'{\c&HFFFFFF&}'
-                    tokens.append(tag+safe_text(x['text']))
+                    tag=atag if i==j else r'{\c&HFFFFFF&}'
+                    tokens.append(tag+wtext(x))
                 end=group[i+1]['start'] if i+1<len(group) else w['end']
                 head+=line(w['start'],end,' '.join(tokens))
+            wi+=len(group)
         else:
             tokens=[]
             for w in group:
                 key=normalized(w['text']).strip('.,!?;:')
                 active=p['caption_mode']=='Frase' or key in keywords
-                tokens.append(('{\\c'+accent+'}' if active else r'{\c&HFFFFFF&}')+safe_text(w['text']))
+                col=ass_color(caption_color_for(color_mode,wi,p['color']))
+                tokens.append(('{\\c'+col+'}' if active else r'{\c&HFFFFFF&}')+wtext(w));wi+=1
             head+=line(group[0]['start'],group[-1]['end'],r'{\fscx94\fscy94\t(0,100,\fscx100\fscy100)}'+' '.join(tokens))
     return head
 
