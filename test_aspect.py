@@ -16,6 +16,11 @@ class TargetDimsTests(unittest.TestCase):
         self.assertEqual(core.target_dims('9:16', 'Média (720p)'), (720, 1280))
         self.assertEqual(core.target_dims('16:9', 'Leve (480p)'), (852, 480))
 
+    def test_quality_4k(self):
+        self.assertEqual(core.target_dims('9:16', 'Máxima (4K)'), (2160, 3840))
+        self.assertEqual(core.target_dims('16:9', 'Máxima (4K)'), (3840, 2160))
+        self.assertEqual(core.target_dims('1:1', 'Máxima (4K)'), (2160, 2160))
+
     def test_original_returns_none(self):
         self.assertIsNone(core.target_dims('Original'))
         self.assertIsNone(core.target_dims('qualquer-coisa'))

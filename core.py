@@ -503,7 +503,7 @@ def atomic_json(path,data):
 # Proporção e resolução de SAÍDA. 'Original' mantém a do take. Os demais reenquadram
 # a sequência na moldura escolhida (com letterbox), sem tocar nos arquivos originais.
 ASPECTS = {'9:16': (9, 16), '1:1': (1, 1), '16:9': (16, 9), '4:5': (4, 5), '5:4': (5, 4), '4:3': (4, 3)}
-QUALITIES = {'Alta (1080p)': 1080, 'Média (720p)': 720, 'Leve (480p)': 480}
+QUALITIES = {'Máxima (4K)': 2160, 'Alta (1080p)': 1080, 'Média (720p)': 720, 'Leve (480p)': 480}
 ASPECT_CHOICES = ['Original'] + list(ASPECTS)
 QUALITY_CHOICES = list(QUALITIES)
 

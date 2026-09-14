@@ -9,9 +9,38 @@ a lógica de "o que fazer com a resposta" roda em teste sem o painel no ar. A
 camada de rede real fica isolada no fim. Nada de segredo no código — a URL do
 painel é configurável e a autenticação (quando existir) vem de fora.
 """
-import json
+import json, unicodedata
 from pathlib import Path
 from urllib.parse import urljoin
+
+
+def _sortkey(s):
+    """Chave de ordenação A–Z que ignora maiúsculas e acentos (coração ~ coracao)."""
+    return ''.join(c for c in unicodedata.normalize('NFD', (s or '').lower())
+                   if unicodedata.category(c) != 'Mn')
+
+
+def group_queue(tasks, by='cliente'):
+    """Organiza a fila para exibição. Devolve linhas prontas para a UI desenhar:
+    `('header', rótulo, contagem)` e `('item', tarefa)`.
+
+    - 'cliente': agrupa por cliente (A–Z), com os cards de cada um em ordem de
+      título. É o que transforma 180 itens soltos em algo navegável.
+    - 'titulo': lista única, todos os cards em ordem de título (sem cabeçalhos).
+    A decisão de ordem/agrupamento fica aqui, testável sem Qt.
+    """
+    if by == 'titulo':
+        return [('item', t) for t in sorted(tasks, key=lambda t: (_sortkey(t['titulo']), _sortkey(t['cliente'])))]
+    groups = {}
+    for t in tasks:
+        groups.setdefault(t['cliente'] or 'Sem cliente', []).append(t)
+    rows = []
+    for cliente in sorted(groups, key=_sortkey):
+        items = sorted(groups[cliente], key=lambda t: _sortkey(t['titulo']))
+        rows.append(('header', cliente, len(items)))
+        for t in items:
+            rows.append(('item', t))
+    return rows
 
 # Onde o painel vive. Mesmo host do canal de atualização (studio-catalog).
 DEFAULT_BASE = 'https://social-media-painel.pages.dev'

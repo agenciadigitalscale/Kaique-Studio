@@ -163,6 +163,7 @@ class Studio(QMainWindow):
         hb.addWidget(button('Salvar ligação',self.save_hub_config))
         hb.addWidget(button('↻ Atualizar fila de edição',self.refresh_queue,True))
         self.queue_search=QLineEdit();self.queue_search.setPlaceholderText('🔎 Filtrar por cliente ou título…');self.queue_search.textChanged.connect(self._populate_queue);hb.addWidget(self.queue_search)
+        self.queue_sort=QComboBox();self.queue_sort.addItems(['Por cliente (A–Z)','Por título (A–Z)']);self.queue_sort.currentTextChanged.connect(self._populate_queue);hb.addWidget(row(label('Organizar'),self.queue_sort))
         self.queue_list=QListWidget();self.queue_list.currentItemChanged.connect(self.describe_task);hb.addWidget(self.queue_list,1)
         self.queue_info=label('Configure a chave e clique em Atualizar para ver os cards em produção.');hb.addWidget(self.queue_info)
         hb.addWidget(row(button('Copiar nome do export',self.copy_export_name),button('Marcar como entregue',self.mark_delivered)))
@@ -431,16 +432,25 @@ class Studio(QMainWindow):
         self.task(lambda progress:bridge.fetch_queue(base=cfg['base'],key=cfg['key'] or None),done)
     def _populate_queue(self,*_):
         tasks=getattr(self,'_queue',[]);q=core.normalized(self.queue_search.text());self.queue_list.clear()
-        shown=0
-        for t in tasks:
-            if q and q not in core.normalized(f"{t['cliente']} {t['titulo']} {t['selo']}"):continue
-            it=QListWidgetItem(f"🎬 {t['cliente']} — {t['titulo']}  [{t['selo'] or '—'}]");it.setData(Qt.UserRole,t);self.queue_list.addItem(it);shown+=1
+        filtered=[t for t in tasks if not q or q in core.normalized(f"{t['cliente']} {t['titulo']} {t['selo']}")]
+        by='titulo' if 'título' in self.queue_sort.currentText() else 'cliente'
+        for r in bridge.group_queue(filtered,by=by):
+            if r[0]=='header':
+                _,cliente,count=r
+                h=QListWidgetItem(f'▸ {cliente.upper()}   ·   {count}');h.setData(Qt.UserRole+1,True);h.setFlags(Qt.NoItemFlags)
+                from PySide6.QtGui import QFont,QBrush,QColor
+                f=QFont();f.setBold(True);h.setFont(f);h.setForeground(QBrush(QColor('#c9ff63')));self.queue_list.addItem(h)
+            else:
+                t=r[1]
+                text=(f"🎬 {t['cliente']} — {t['titulo']}  [{t['selo'] or '—'}]" if by=='titulo'
+                      else f"     {t['titulo']}   [{t['selo'] or '—'}]")
+                it=QListWidgetItem(text);it.setData(Qt.UserRole,t);self.queue_list.addItem(it)
         if not tasks:
             self.queue_info.setText('Nenhum card em produção (ou chave inválida). Confira a chave e o painel.')
         elif q:
-            self.queue_info.setText(f'{shown} de {len(tasks)} card(s) — filtro "{self.queue_search.text().strip()}".')
+            self.queue_info.setText(f'{len(filtered)} de {len(tasks)} card(s) — filtro "{self.queue_search.text().strip()}".')
         else:
-            self.queue_info.setText(f'{len(tasks)} card(s) em produção. Filtre acima e selecione um para pegar o nome do export.')
+            self.queue_info.setText(f'{len(tasks)} card(s) em produção, agrupados. Selecione um para pegar o nome do export.')
     def _selected_task(self):
         it=self.queue_list.currentItem();return it.data(Qt.UserRole) if it else None
     def describe_task(self,*_):
