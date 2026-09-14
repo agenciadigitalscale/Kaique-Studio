@@ -6,11 +6,11 @@ from PySide6.QtGui import QPainter,QColor,QPen,QPixmap,QAction,QKeySequence,QSho
 from PySide6.QtWidgets import (QApplication,QMainWindow,QWidget,QVBoxLayout,QHBoxLayout,QSplitter,
  QLabel,QPushButton,QListWidget,QListWidgetItem,QAbstractItemView,QTabWidget,QLineEdit,QPlainTextEdit,
  QTableWidget,QTableWidgetItem,QHeaderView,QDoubleSpinBox,QComboBox,QSpinBox,QCheckBox,QScrollArea,
- QSlider,QFileDialog,QMessageBox,QProgressBar,QMenu)
+ QSlider,QFileDialog,QMessageBox,QProgressBar,QMenu,QInputDialog)
 import library
 from PySide6.QtMultimedia import QMediaPlayer,QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
-import core,native
+import core,native,bridge
 from legacy_app import STYLE,STATE,BASE,Job,button,label,row,panel
 
 class ClipList(QListWidget):
@@ -155,6 +155,17 @@ class Studio(QMainWindow):
         im.addWidget(button('Remover música',lambda:self.clear_asset('music')));im.addWidget(button('Remover LUT',lambda:self.clear_asset('lut')));im.addWidget(button('Remover efeitos sonoros',lambda:self.clear_asset('sfx')));im.addWidget(button('Remover imagens/ícones',lambda:self.clear_asset('overlays')))
         self.effects=label('');im.addWidget(self.effects);im.addStretch();tabs.addTab(image,'Imagem/áudio')
         script=QWidget();sc=QVBoxLayout(script);self.client=QLineEdit();self.client.setPlaceholderText('Cliente / projeto');sc.addWidget(self.client);self.script=QPlainTextEdit();self.script.setPlaceholderText('Roteiro de referência');sc.addWidget(self.script);tabs.addTab(script,'Projeto')
+        hub=QWidget();hb=QVBoxLayout(hub)
+        cfg=bridge.load_config(STATE)
+        hb.addWidget(label('Ligação com o DS HUB','title'))
+        self.hub_base=QLineEdit(cfg['base']);self.hub_base.setPlaceholderText('URL do painel');hb.addWidget(label('Endereço do painel'));hb.addWidget(self.hub_base)
+        self.hub_key=QLineEdit(cfg['key']);self.hub_key.setEchoMode(QLineEdit.Password);self.hub_key.setPlaceholderText('Chave do Studio (X-Studio-Key)');hb.addWidget(label('Chave do Studio'));hb.addWidget(self.hub_key)
+        hb.addWidget(button('Salvar ligação',self.save_hub_config))
+        hb.addWidget(button('↻ Atualizar fila de edição',self.refresh_queue,True))
+        self.queue_list=QListWidget();self.queue_list.currentItemChanged.connect(self.describe_task);hb.addWidget(self.queue_list,1)
+        self.queue_info=label('Configure a chave e clique em Atualizar para ver os cards em produção.');hb.addWidget(self.queue_info)
+        hb.addWidget(row(button('Copiar nome do export',self.copy_export_name),button('Marcar como entregue',self.mark_delivered)))
+        tabs.addTab(hub,'DS HUB')
         # A parte de baixo (timeline) fica num painel próprio, separado do topo por
         # um splitter VERTICAL: dá pra arrastar e dar mais espaço ao player ou à timeline.
         bottom=QWidget();bl=QVBoxLayout(bottom);bl.setContentsMargins(0,6,0,0)
@@ -407,6 +418,37 @@ class Studio(QMainWindow):
                 self.library_panel.refresh()
             self.library_dock.show();self.library_dock.raise_()
         except Exception as exc:self.error(exc)
+    def save_hub_config(self):
+        bridge.save_config(STATE,self.hub_base.text(),self.hub_key.text())
+        self.queue_info.setText('Ligação salva. Clique em Atualizar fila de edição.')
+    def refresh_queue(self):
+        if self.job:return
+        cfg=bridge.save_config(STATE,self.hub_base.text(),self.hub_key.text())
+        self.queue_info.setText('Buscando a fila no DS HUB…')
+        def done(tasks):
+            self._queue=tasks;self.queue_list.clear()
+            for t in tasks:
+                it=QListWidgetItem(f"🎬 {t['cliente']} — {t['titulo']}  [{t['selo'] or '—'}]");it.setData(Qt.UserRole,t);self.queue_list.addItem(it)
+            self.queue_info.setText(f'{len(tasks)} card(s) em produção. Selecione um para pegar o nome do export.' if tasks else 'Nenhum card em produção (ou chave inválida). Confira a chave e o painel.')
+        self.task(lambda progress:bridge.fetch_queue(base=cfg['base'],key=cfg['key'] or None),done)
+    def _selected_task(self):
+        it=self.queue_list.currentItem();return it.data(Qt.UserRole) if it else None
+    def describe_task(self,*_):
+        t=self._selected_task()
+        if t:self.queue_info.setText('Nome do export: '+bridge.export_name(t))
+    def copy_export_name(self):
+        t=self._selected_task()
+        if not t:return self.queue_info.setText('Selecione um card da fila primeiro.')
+        name=bridge.export_name(t);QApplication.clipboard().setText(name)
+        self.client.setText(t['cliente']);self.queue_info.setText(f'Copiado: "{name}". Cole no nome do export do CapCut.')
+    def mark_delivered(self):
+        t=self._selected_task()
+        if not t:return self.queue_info.setText('Selecione um card da fila primeiro.')
+        link,ok=QInputDialog.getText(self,'Marcar como entregue',f'Link do vídeo entregue para "{t["titulo"]}" (Drive/pasta Publicar):')
+        if not ok or not link.strip():return
+        cfg=bridge.load_config(STATE)
+        def done(_):self.queue_info.setText('Entregue! O card foi para "Pronto p/ enviar" no painel.');self.refresh_queue()
+        self.task(lambda progress:bridge.deliver(t,link.strip(),base=cfg['base'],key=cfg['key'] or None),done)
     def drop_resource(self,entry,at_time):
         """Recurso solto na timeline: aplica no tempo do X onde caiu (mesma lógica
         do 'Usar no projeto', via library.apply_entry)."""

@@ -1,7 +1,28 @@
 """Ponte com o DS HUB — parse da fila, nome de export e entrega. Rede injetada,
 roda offline (um teste que dependesse do painel no ar falharia por rede, não por bug)."""
-import json, unittest
+import json, tempfile, unittest
+from pathlib import Path
 import bridge
+
+
+class ConfigTests(unittest.TestCase):
+    def test_defaults_when_missing(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = bridge.load_config(d)
+            self.assertEqual(cfg['base'], bridge.DEFAULT_BASE)
+            self.assertEqual(cfg['key'], '')
+
+    def test_save_then_load_roundtrip(self):
+        with tempfile.TemporaryDirectory() as d:
+            bridge.save_config(d, 'https://painel.exemplo', '  minha-chave  ')
+            cfg = bridge.load_config(d)
+            self.assertEqual(cfg['base'], 'https://painel.exemplo')
+            self.assertEqual(cfg['key'], 'minha-chave')  # trim
+
+    def test_corrupt_file_falls_back(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(bridge.config_path(d)).write_text('{lixo', encoding='utf-8')
+            self.assertEqual(bridge.load_config(d)['base'], bridge.DEFAULT_BASE)
 
 
 QUEUE = {'queue': [

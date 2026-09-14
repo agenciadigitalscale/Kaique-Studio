@@ -10,10 +10,35 @@ camada de rede real fica isolada no fim. Nada de segredo no código — a URL do
 painel é configurável e a autenticação (quando existir) vem de fora.
 """
 import json
+from pathlib import Path
 from urllib.parse import urljoin
 
 # Onde o painel vive. Mesmo host do canal de atualização (studio-catalog).
 DEFAULT_BASE = 'https://social-media-painel.pages.dev'
+
+
+def config_path(state):
+    return Path(state) / 'dshub.json'
+
+
+def load_config(state):
+    """URL do painel e chave do Studio, guardadas na máquina do editor (nunca no
+    código nem no repositório). Arquivo ausente/corrompido cai nos padrões."""
+    p = config_path(state)
+    if p.exists():
+        try:
+            d = json.loads(p.read_text(encoding='utf-8'))
+            return dict(base=(d.get('base') or DEFAULT_BASE), key=str(d.get('key', '')))
+        except Exception:  # noqa: BLE001 — config ruim não pode travar o app
+            pass
+    return dict(base=DEFAULT_BASE, key='')
+
+
+def save_config(state, base, key):
+    config_path(state).write_text(
+        json.dumps(dict(base=(base or DEFAULT_BASE).strip(), key=(key or '').strip())),
+        encoding='utf-8')
+    return load_config(state)
 
 
 def parse_queue(data):
