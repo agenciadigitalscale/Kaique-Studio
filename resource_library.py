@@ -34,13 +34,13 @@ class DragList(QListWidget):
 # Estilo próprio da Biblioteca — herda o tema do app e refina a lista: linhas
 # altas e arejadas, cabeçalho de seção com o verde da marca, seleção destacada.
 LIBRARY_QSS = '''
-QDialog {background:#101216;}
-QListWidget {background:#12151b;border:1px solid #2a303b;border-radius:10px;padding:4px;outline:0;}
-QListWidget::item {padding:9px 10px;border-radius:7px;margin:1px 2px;}
-QListWidget::item:hover {background:#1b2230;}
-QListWidget::item:selected {background:#2f4a1e;color:#eaffce;}
-QLabel#libtitle {font-size:15px;font-weight:800;letter-spacing:1px;color:#c9ff63;}
-QLabel#libhint {color:#8b95a6;font-size:11px;}
+QDialog {background:#0e0b16;}
+QListWidget {background:#140f1f;border:1px solid #2a2340;border-radius:10px;padding:4px;outline:0;}
+QListWidget::item {padding:9px 10px;border-radius:8px;margin:1px 2px;}
+QListWidget::item:hover {background:#221a33;}
+QListWidget::item:selected {background:#3a2560;color:#f0e7ff;}
+QLabel#libtitle {font-size:15px;font-weight:800;letter-spacing:1px;color:#c084fc;}
+QLabel#libhint {color:#9a90b5;font-size:11px;}
 '''
 _AUDIO_KINDS = {'Memes', 'Efeitos sonoros', 'Músicas'}
 _HEADER_ROLE = Qt.UserRole + 1  # marca a linha como cabeçalho de seção (não selecionável)
@@ -95,7 +95,7 @@ class LibraryPanel(QWidget):
                 _,kind,count=r
                 h=QListWidgetItem(f'{kind_emoji(kind)}  {kind.upper()}   ·   {count}')
                 h.setData(_HEADER_ROLE,True);h.setFlags(Qt.NoItemFlags)  # não selecionável, não clicável
-                f=QFont();f.setBold(True);f.setPointSize(9);h.setFont(f);h.setForeground(QBrush(QColor('#c9ff63')))
+                f=QFont();f.setBold(True);f.setPointSize(9);h.setFont(f);h.setForeground(QBrush(QColor('#c084fc')))
                 h.setSizeHint(QSize(0,30));self.list.addItem(h)
             else:
                 e=r[1];star='⭐ ' if e['id'] in favorites else ''

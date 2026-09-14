@@ -48,13 +48,13 @@ class Timeline(QWidget):
         self.dropped.emit(entry,self._time_at(event.position().x()));event.acceptProposedAction()
     def paintEvent(self,event):
         F=1.5  # escala vertical das faixas — timeline mais alta e legível
-        p=QPainter(self);p.fillRect(self.rect(),QColor('#12161b'));scale,rects=self.geometry_data()
-        for text,y in [('TAKES',60),('VOZ',139),('LEGENDAS',178),('MÚSICA',206),('EFEITOS',231)]:p.setPen(QColor('#9ca9bb'));p.drawText(4,int(y*F),text)
+        p=QPainter(self);p.fillRect(self.rect(),QColor('#120e1a'));scale,rects=self.geometry_data()
+        for text,y in [('TAKES',60),('VOZ',139),('LEGENDAS',178),('MÚSICA',206),('EFEITOS',231)]:p.setPen(QColor('#9a90b5'));p.drawText(4,int(y*F),text)
         total=native.length(self.data)
         for i in range(11):
             x=95+total*scale*i/10;p.setPen(QColor('#586576'));p.drawText(int(x),15,f'{total*i/10:.1f}s')
         for i,(c,(x,w,offset)) in enumerate(zip(self.data['clips'],rects)):
-            p.setPen(QPen(QColor('#c9ff63' if i==self.active else '#526d43'),2));p.setBrush(QColor('#243020'));p.drawRect(QRectF(x,24*F,w,86*F))
+            p.setPen(QPen(QColor('#c084fc' if i==self.active else '#4a3a63'),2));p.setBrush(QColor('#241b33'));p.drawRect(QRectF(x,24*F,w,86*F))
             p.save();p.setClipRect(QRectF(x+2,26*F,max(0,w-4),82*F))
             thumbs=c.get('thumbs',[])
             if thumbs:
@@ -66,17 +66,17 @@ class Timeline(QWidget):
             # source-indexed peaks follow trim and reorder, not virtual source time.
             peaks=c.get('peaks',[])
             if peaks:
-                p.setPen(QPen(QColor('#70b7b0'),1))
+                p.setPen(QPen(QColor('#a78bfa'),1))
                 for px in range(0,max(1,int(w)),2):
                     t=c['in']+(px/max(1,w))*(c['out']-c['in']);index=min(len(peaks)-1,int(t/c['duration']*len(peaks)))
                     h=peaks[index]*20*F;p.drawLine(int(x+px),int(139*F-h),int(x+px),int(139*F+h))
             for word in c['words']:
                 a=max(c['in'],word['start']);b=min(c['out'],word['end'])
                 if b>a:p.fillRect(QRectF(x+(a-c['in'])*scale,165*F,max(1,(b-a)*scale),16*F),QColor('#9b80d0'))
-        if self.data['style']['music']:p.fillRect(QRectF(95,195*F,total*scale,17*F),QColor('#315b66'))
+        if self.data['style']['music']:p.fillRect(QRectF(95,195*F,total*scale,17*F),QColor('#5b3a66'))
         for s in self.data['style']['sfx']:
-            x=95+s['time']*scale;p.fillRect(QRectF(x,219*F,8,15*F),QColor('#edb05b'))
-        p.setPen(QPen(QColor('#c9ff63'),2));x=95+self.cursor*scale;p.drawLine(int(x),20,int(x),self.height())
+            x=95+s['time']*scale;p.fillRect(QRectF(x,219*F,8,15*F),QColor('#f472b6'))
+        p.setPen(QPen(QColor('#ec4899'),2));x=95+self.cursor*scale;p.drawLine(int(x),20,int(x),self.height())
         if self.drag:
             p.setPen(QColor('#ffffff'));p.drawText(98,self.height()-4,'Solte para aplicar • Ctrl+Z para desfazer')
         p.end()
@@ -106,7 +106,7 @@ class Timeline(QWidget):
 class Studio(QMainWindow):
     def __init__(self):
         super().__init__();self.doc=native.project();self.history=[];self.active=-1;self.job=None;self.path=None;self.loading=False;self.preview_mode=False;self.pending_seek=None
-        self.setWindowTitle('Kaique Studio 0.5 • Timeline nativa');self.resize(1480,960)
+        self.setWindowTitle('Kaique Studio 0.7 • Nebula');self.resize(1480,960)
         self.player=QMediaPlayer(self);self.audio=QAudioOutput(self);self.audio.setVolume(.7);self.player.setAudioOutput(self.audio)
         self.build();self.player.positionChanged.connect(self.position);self.player.mediaStatusChanged.connect(self.media_status)
         self.player.errorOccurred.connect(lambda *_:self.status.setText('Player: '+self.player.errorString()+'. Tente Criar prévia leve.'))
@@ -117,7 +117,7 @@ class Studio(QMainWindow):
     def p(self,value):self.doc['style']={k:copy.deepcopy(value[k]) for k in native.STYLE_KEYS}
     def build(self):
         center=QWidget();self.setCentralWidget(center);main=QVBoxLayout(center)
-        main.addWidget(row(label('KAIQUE / STUDIO','brand'),label('0.6 • BIBLIOTECA VIVA'),button('📄 Novo',self.new),button('📂 Abrir',self.load),button('💾 Salvar',self.save),button('❔ Ajuda',self.help),button('⬇ Exportar MP4',lambda:self.export(False),True)))
+        main.addWidget(row(label('KAIQUE / STUDIO','brand'),label('0.7 • NEBULA'),button('📄 Novo',self.new),button('📂 Abrir',self.load),button('💾 Salvar',self.save),button('❔ Ajuda',self.help),button('⬇ Exportar MP4',lambda:self.export(False),True)))
         self.workspace=QWidget();layout=QVBoxLayout(self.workspace);main.addWidget(self.workspace,1)
         split=QSplitter(Qt.Horizontal)
         left,l=panel();l.addWidget(button('+ Importar vários takes',self.import_takes,True));self.clips=ClipList();self.clips.setIconSize(QSize(56,56));self.clips.currentRowChanged.connect(self.select);self.clips.moved.connect(self.move)
@@ -449,7 +449,7 @@ class Studio(QMainWindow):
                 _,cliente,count=r
                 h=QListWidgetItem(f'▸ {cliente.upper()}   ·   {count}');h.setData(Qt.UserRole+1,True);h.setFlags(Qt.NoItemFlags)
                 from PySide6.QtGui import QFont,QBrush,QColor
-                f=QFont();f.setBold(True);h.setFont(f);h.setForeground(QBrush(QColor('#c9ff63')));self.queue_list.addItem(h)
+                f=QFont();f.setBold(True);h.setFont(f);h.setForeground(QBrush(QColor('#c084fc')));self.queue_list.addItem(h)
             else:
                 t=r[1]
                 text=(f"🎬 {t['cliente']} — {t['titulo']}  [{t['selo'] or '—'}]" if by=='titulo'
