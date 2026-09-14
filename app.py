@@ -1,7 +1,7 @@
 from __future__ import annotations
 import copy,json,sys,time,uuid
 from pathlib import Path
-from PySide6.QtCore import Qt,QUrl,QTimer,Signal,QRectF
+from PySide6.QtCore import Qt,QUrl,QTimer,Signal,QRectF,QSize
 from PySide6.QtGui import QPainter,QColor,QPen,QPixmap,QAction,QKeySequence,QShortcut
 from PySide6.QtWidgets import (QApplication,QMainWindow,QWidget,QVBoxLayout,QHBoxLayout,QSplitter,
  QLabel,QPushButton,QListWidget,QListWidgetItem,QAbstractItemView,QTabWidget,QLineEdit,QPlainTextEdit,
@@ -117,10 +117,10 @@ class Studio(QMainWindow):
     def p(self,value):self.doc['style']={k:copy.deepcopy(value[k]) for k in native.STYLE_KEYS}
     def build(self):
         center=QWidget();self.setCentralWidget(center);main=QVBoxLayout(center)
-        main.addWidget(row(label('KAIQUE / STUDIO','brand'),label('0.6 • BIBLIOTECA VIVA'),button('Novo',self.new),button('Abrir',self.load),button('Salvar',self.save),button('Ajuda',self.help),button('Exportar MP4',lambda:self.export(False),True)))
+        main.addWidget(row(label('KAIQUE / STUDIO','brand'),label('0.6 • BIBLIOTECA VIVA'),button('📄 Novo',self.new),button('📂 Abrir',self.load),button('💾 Salvar',self.save),button('❔ Ajuda',self.help),button('⬇ Exportar MP4',lambda:self.export(False),True)))
         self.workspace=QWidget();layout=QVBoxLayout(self.workspace);main.addWidget(self.workspace,1)
         split=QSplitter(Qt.Horizontal)
-        left,l=panel();l.addWidget(button('+ Importar vários takes',self.import_takes,True));self.clips=ClipList();self.clips.currentRowChanged.connect(self.select);self.clips.moved.connect(self.move)
+        left,l=panel();l.addWidget(button('+ Importar vários takes',self.import_takes,True));self.clips=ClipList();self.clips.setIconSize(QSize(56,56));self.clips.currentRowChanged.connect(self.select);self.clips.moved.connect(self.move)
         self.clips.setContextMenuPolicy(Qt.CustomContextMenu);self.clips.customContextMenuRequested.connect(self.clips_menu);l.addWidget(self.clips,1)
         l.addWidget(row(button('↑',lambda:self.move(self.active,self.active-1)),button('↓',lambda:self.move(self.active,self.active+1)),button('Remover',self.remove)))
         l.addWidget(button('Biblioteca de recursos',self.open_library));l.addWidget(label('Arraste para reordenar. Cortes e palavras acompanham cada take.'));split.addWidget(left)
