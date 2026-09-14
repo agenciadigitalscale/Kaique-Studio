@@ -27,7 +27,7 @@ class Timeline(QWidget):
     selected=Signal(int,float);moved=Signal(int,int);trimmed=Signal(int,float,float);dropped=Signal(object,float)
     def __init__(self):
         super().__init__();self.data=native.project();self.active=-1;self.cursor=0;self.drag=None;self.pixmaps={}
-        self.setMinimumHeight(235);self.setMouseTracking(True);self.setAcceptDrops(True)
+        self.setMinimumHeight(360);self.setMouseTracking(True);self.setAcceptDrops(True)
         self.setToolTip('Clique para navegar. Arraste o centro para reordenar; arraste as bordas para aparar. Solte um recurso da Biblioteca aqui. Ctrl+Z desfaz.')
     def geometry_data(self):
         total=max(.01,native.length(self.data));scale=max(100,self.width()-110)/total;offset=0;rects=[]
@@ -47,34 +47,35 @@ class Timeline(QWidget):
         except Exception:return
         self.dropped.emit(entry,self._time_at(event.position().x()));event.acceptProposedAction()
     def paintEvent(self,event):
+        F=1.5  # escala vertical das faixas — timeline mais alta e legível
         p=QPainter(self);p.fillRect(self.rect(),QColor('#12161b'));scale,rects=self.geometry_data()
-        for text,y in [('TAKES',60),('VOZ',139),('LEGENDAS',178),('MÚSICA',206),('EFEITOS',231)]:p.setPen(QColor('#9ca9bb'));p.drawText(4,y,text)
+        for text,y in [('TAKES',60),('VOZ',139),('LEGENDAS',178),('MÚSICA',206),('EFEITOS',231)]:p.setPen(QColor('#9ca9bb'));p.drawText(4,int(y*F),text)
         total=native.length(self.data)
         for i in range(11):
             x=95+total*scale*i/10;p.setPen(QColor('#586576'));p.drawText(int(x),15,f'{total*i/10:.1f}s')
         for i,(c,(x,w,offset)) in enumerate(zip(self.data['clips'],rects)):
-            p.setPen(QPen(QColor('#c9ff63' if i==self.active else '#526d43'),2));p.setBrush(QColor('#243020'));p.drawRect(QRectF(x,24,w,86))
-            p.save();p.setClipRect(QRectF(x+2,26,max(0,w-4),82))
+            p.setPen(QPen(QColor('#c9ff63' if i==self.active else '#526d43'),2));p.setBrush(QColor('#243020'));p.drawRect(QRectF(x,24*F,w,86*F))
+            p.save();p.setClipRect(QRectF(x+2,26*F,max(0,w-4),82*F))
             thumbs=c.get('thumbs',[])
             if thumbs:
                 for j in range(max(1,int(w/90)+1)):
                     path=thumbs[min(len(thumbs)-1,int(j*90/max(1,w)*len(thumbs)))]
                     if path not in self.pixmaps:self.pixmaps[path]=QPixmap(path)
-                    p.drawPixmap(QRectF(x+j*90,27,90,51),self.pixmaps[path],QRectF(self.pixmaps[path].rect()))
-            p.setPen(QColor('white'));p.drawText(int(x)+5,99,Path(c['source']).name);p.restore()
+                    p.drawPixmap(QRectF(x+j*90,27*F,90,51*F),self.pixmaps[path],QRectF(self.pixmaps[path].rect()))
+            p.setPen(QColor('white'));p.drawText(int(x)+5,int(99*F),Path(c['source']).name);p.restore()
             # source-indexed peaks follow trim and reorder, not virtual source time.
             peaks=c.get('peaks',[])
             if peaks:
                 p.setPen(QPen(QColor('#70b7b0'),1))
                 for px in range(0,max(1,int(w)),2):
                     t=c['in']+(px/max(1,w))*(c['out']-c['in']);index=min(len(peaks)-1,int(t/c['duration']*len(peaks)))
-                    h=peaks[index]*20;p.drawLine(int(x+px),int(139-h),int(x+px),int(139+h))
+                    h=peaks[index]*20*F;p.drawLine(int(x+px),int(139*F-h),int(x+px),int(139*F+h))
             for word in c['words']:
                 a=max(c['in'],word['start']);b=min(c['out'],word['end'])
-                if b>a:p.fillRect(QRectF(x+(a-c['in'])*scale,165,max(1,(b-a)*scale),16),QColor('#9b80d0'))
-        if self.data['style']['music']:p.fillRect(QRectF(95,195,total*scale,17),QColor('#315b66'))
+                if b>a:p.fillRect(QRectF(x+(a-c['in'])*scale,165*F,max(1,(b-a)*scale),16*F),QColor('#9b80d0'))
+        if self.data['style']['music']:p.fillRect(QRectF(95,195*F,total*scale,17*F),QColor('#315b66'))
         for s in self.data['style']['sfx']:
-            x=95+s['time']*scale;p.fillRect(QRectF(x,219,8,15),QColor('#edb05b'))
+            x=95+s['time']*scale;p.fillRect(QRectF(x,219*F,8,15*F),QColor('#edb05b'))
         p.setPen(QPen(QColor('#c9ff63'),2));x=95+self.cursor*scale;p.drawLine(int(x),20,int(x),self.height())
         if self.drag:
             p.setPen(QColor('#ffffff'));p.drawText(98,self.height()-4,'Solte para aplicar • Ctrl+Z para desfazer')
@@ -182,8 +183,8 @@ class Studio(QMainWindow):
         bl.addWidget(label('TIMELINE • arraste o centro para reordenar / bordas para aparar','title'))
         zoom=QSlider(Qt.Horizontal);zoom.setRange(1,8);zoom.setValue(1);zoom.valueChanged.connect(self.zoom_timeline);bl.addWidget(row(label('Zoom da timeline'),zoom))
         self.timeline=Timeline();self.timeline.selected.connect(self.seek_clip);self.timeline.moved.connect(self.move);self.timeline.trimmed.connect(self.trim);self.timeline.dropped.connect(self.drop_resource)
-        self.scroll=QScrollArea();self.scroll.setWidgetResizable(True);self.scroll.setWidget(self.timeline);self.scroll.setMinimumHeight(180);bl.addWidget(self.scroll,1)
-        vsplit=QSplitter(Qt.Vertical);vsplit.addWidget(split);vsplit.addWidget(bottom);vsplit.setStretchFactor(0,1);vsplit.setSizes([680,300]);layout.addWidget(vsplit,1)
+        self.scroll=QScrollArea();self.scroll.setWidgetResizable(True);self.scroll.setWidget(self.timeline);self.scroll.setMinimumHeight(260);bl.addWidget(self.scroll,1)
+        vsplit=QSplitter(Qt.Vertical);vsplit.addWidget(split);vsplit.addWidget(bottom);vsplit.setStretchFactor(0,1);vsplit.setSizes([560,440]);layout.addWidget(vsplit,1)
         self.status=label('Pronto');self.progress=QProgressBar();self.progress.setRange(0,1);main.addWidget(row(self.status,self.progress))
         for key,fn in [('Ctrl+S',self.save),('Ctrl+Z',self.undo),('Ctrl+B',self.split_clip)]:
             action=QAction(self);action.setShortcut(QKeySequence(key));action.triggered.connect(fn);self.addAction(action)
