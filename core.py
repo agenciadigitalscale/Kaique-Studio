@@ -40,7 +40,12 @@ def project():
                 sfx=[], sticker='', sticker_start=0, sticker_end=5, overlays=[], lut='',
                 color='#C9FF63', font_size=22, caption_mode='Palavra ativa', caption_style='Realce', keywords='',
                 filter='Original', transition='Nenhuma', zoom=1.0, captions_enabled=True,
-                aspect='Original', quality='Alta (1080p)')
+                aspect='Original', quality='Alta (1080p)', titles=[])
+
+
+# Textos/títulos na tela (hooks, chamadas) — independentes da legenda da fala.
+# O valor é o código de alinhamento do ASS: 8=topo, 5=centro, 2=rodapé (centralizados).
+TITLE_POSITIONS = {'Topo': 8, 'Centro': 5, 'Rodapé': 2}
 
 
 def ffmpeg():
@@ -105,6 +110,16 @@ def validate(p, files=True):
         raise ValueError('Proporção de saída inválida.')
     if p.get('quality', 'Alta (1080p)') not in QUALITY_CHOICES:
         raise ValueError('Resolução de saída inválida.')
+    for t in p.get('titles', []):
+        if not str(t.get('text', '')).strip():
+            raise ValueError('Um texto na tela está sem conteúdo.')
+        s, e = float(t['start']), float(t['end'])
+        if not math.isfinite(s + e) or not 0 <= s < e:
+            raise ValueError('Tempo do texto na tela inválido.')
+        if t.get('position', 'Centro') not in TITLE_POSITIONS:
+            raise ValueError('Posição do texto na tela inválida.')
+        if not 12 <= int(t.get('size', 40)) <= 120:
+            raise ValueError('Tamanho do texto na tela fora da faixa (12–120).')
     if p['filter'] not in FILTERS or not 1 <= float(p['zoom']) <= 1.3 or not 0 <= float(p['music_volume']) <= 1:
         raise ValueError('Ajuste de imagem ou áudio inválido.')
     if p.get('transition','Nenhuma') not in ['Nenhuma','Preto','Branco']:
@@ -332,6 +347,15 @@ Style: Main,Arial,{round(p['font_size']*2.5)},&H00FFFFFF,&H00FFFFFF,&H00101010,&
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 '''
+    # Textos na tela primeiro: valem mesmo com a legenda da fala desligada.
+    for t in p.get('titles', []):
+        if float(t['end']) - float(t['start']) < 0.005:
+            continue
+        an = TITLE_POSITIONS.get(t.get('position', 'Centro'), 5)
+        size = round(int(t.get('size', 40)) * 2.5)
+        col = ass_color(t.get('color', p['color']))
+        tag = '{\\an' + str(an) + '\\fs' + str(size) + '\\c' + col + '\\bord3\\3c&H101010&}'
+        head += f'Dialogue: 0,{ass_time(float(t["start"]))},{ass_time(float(t["end"]))},Main,,0,0,0,,{tag}{safe_text(t["text"])}\n'
     if not p['captions_enabled']:
         return head
     words = mapped_words(p)

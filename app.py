@@ -145,7 +145,10 @@ class Studio(QMainWindow):
         self.caption_style=QComboBox();self.caption_style.addItems(core.CAPTION_STYLES);c.addWidget(label('Animação da legenda (no modo Palavra ativa)'));c.addWidget(self.caption_style)
         self.keywords=QLineEdit();self.keywords.setPlaceholderText('Palavras-chave (vírgula) — vazio = destaque automático');c.addWidget(self.keywords)
         self.font=QSpinBox();self.font.setRange(10,50);c.addWidget(label('Tamanho da legenda'));c.addWidget(self.font)
-        self.enabled=QCheckBox('Legendas na exportação');c.addWidget(self.enabled);tabs.addTab(caption,'Legendas')
+        self.enabled=QCheckBox('Legendas na exportação');c.addWidget(self.enabled)
+        c.addWidget(label('Textos na tela (hooks, chamadas — independem da fala)','title'))
+        c.addWidget(row(button('➕ Texto na tela',self.add_title),button('Remover textos',lambda:self.clear_asset('titles'))))
+        tabs.addTab(caption,'Legendas')
         image=QWidget();im=QVBoxLayout(image)
         self.aspect=QComboBox();self.aspect.addItems(core.ASPECT_CHOICES);im.addWidget(label('Proporção da saída (Reels 9:16 · Feed 4:5 · YouTube 16:9)','title'));im.addWidget(self.aspect)
         self.quality=QComboBox();self.quality.addItems(core.QUALITY_CHOICES);im.addWidget(label('Resolução'));im.addWidget(self.quality)
@@ -224,7 +227,7 @@ class Studio(QMainWindow):
         if self.active<0 and self.doc['clips']:self.active=0
         self.clips.setCurrentRow(self.active);self.clips.blockSignals(False)
         s=self.doc['style'];self.mode.setCurrentText(s['caption_mode']);self.caption_style.setCurrentText(s.get('caption_style','Realce'));self.keywords.setText(s['keywords']);self.font.setValue(s['font_size']);self.enabled.setChecked(s['captions_enabled']);self.look.setCurrentText(s['filter']);self.transition.setCurrentText(s['transition']);self.volume.setValue(round(s['music_volume']*100));self.aspect.setCurrentText(s.get('aspect','Original'));self.quality.setCurrentText(s.get('quality','Alta (1080p)'));self.client.setText(self.doc['client']);self.script.setPlainText(self.doc['script'])
-        self.effects.setText(f"Música: {Path(s['music']).name if s['music'] else 'nenhuma'}\nEfeitos sonoros: {len(s['sfx'])}\nLUT: {Path(s['lut']).name if s['lut'] else 'nenhuma'}")
+        self.effects.setText(f"Música: {Path(s['music']).name if s['music'] else 'nenhuma'}\nEfeitos sonoros: {len(s['sfx'])}\nLUT: {Path(s['lut']).name if s['lut'] else 'nenhuma'}\nTextos na tela: {len(s.get('titles',[]))}")
         self.words.setRowCount(0)
         if self.active>=0:
             c=self.doc['clips'][self.active];self.ins.setValue(c['in']);self.outs.setValue(c['out']);self.words.setRowCount(len(c['words']))
@@ -525,7 +528,23 @@ class Studio(QMainWindow):
                 else:p['style'][key]=value
         self.mutate(apply)
     def clear_asset(self,key):
-        try:self.sync();self.checkpoint();self.doc['style'][key]=[] if key in ('sfx','overlays') else '';self.restore_ui()
+        try:self.sync();self.checkpoint();self.doc['style'][key]=[] if key in ('sfx','overlays','titles') else '';self.restore_ui()
+        except Exception as exc:self.error(exc)
+    def add_title(self):
+        if not self.doc['clips']:return self.info('Importe os takes primeiro.')
+        text,ok=QInputDialog.getText(self,'Texto na tela','Escreva o texto (hook, chamada, ex.: ARRASTA PRA CIMA):')
+        if not ok or not text.strip():return
+        pos,ok=QInputDialog.getItem(self,'Posição','Onde na tela:',list(core.TITLE_POSITIONS),1,False)
+        if not ok:return
+        total=core.duration(self.p)
+        start,ok=QInputDialog.getDouble(self,'Texto na tela','Aparece a partir de (segundo):',0,0,max(0,total-.01),1)
+        if not ok:return
+        end,ok=QInputDialog.getDouble(self,'Texto na tela','Some em (segundo):',min(total,start+3),start+.1,total,1)
+        if not ok:return
+        try:
+            self.sync();self.checkpoint()
+            self.doc['style'].setdefault('titles',[]).append(dict(text=text.strip(),start=start,end=end,position=pos,size=44))
+            native.validate(self.doc);self.restore_ui();self.status.setText('Texto adicionado. Clique em "Prévia com efeitos" para ver.')
         except Exception as exc:self.error(exc)
     def save(self):
         if self.job:return False
