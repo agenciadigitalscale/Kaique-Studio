@@ -52,21 +52,23 @@ class DeliveryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             bridge.delivery_payload({'card_id': '2007'}, '')
 
-    def test_fetch_queue_uses_injected_fetch(self):
+    def test_fetch_queue_uses_injected_fetch_and_key(self):
         seen = {}
-        def fake(url):
-            seen['url'] = url; return json.dumps(QUEUE)
-        tasks = bridge.fetch_queue(base='https://painel.exemplo', fetch=fake)
+        def fake(url, key):
+            seen['url'] = url; seen['key'] = key; return json.dumps(QUEUE)
+        tasks = bridge.fetch_queue(base='https://painel.exemplo', fetch=fake, key='segredo')
         self.assertEqual(seen['url'], 'https://painel.exemplo/api/studio-queue')
+        self.assertEqual(seen['key'], 'segredo')
         self.assertEqual(len(tasks), 2)
 
     def test_deliver_posts_payload(self):
         sent = {}
-        def fake_post(url, body):
-            sent['url'] = url; sent['body'] = json.loads(body); return b'{"ok":true}'
-        bridge.deliver({'card_id': '3012'}, 'C:/videos/out.mp4', base='https://p', post=fake_post)
+        def fake_post(url, body, key):
+            sent['url'] = url; sent['body'] = json.loads(body); sent['key'] = key; return b'{"ok":true}'
+        bridge.deliver({'card_id': '3012'}, 'C:/videos/out.mp4', base='https://p', post=fake_post, key='k')
         self.assertEqual(sent['url'], 'https://p/api/studio-deliver')
         self.assertEqual(sent['body']['card_id'], '3012')
+        self.assertEqual(sent['key'], 'k')
 
 
 if __name__ == '__main__':

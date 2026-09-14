@@ -56,30 +56,39 @@ def delivery_payload(task, link):
     return dict(card_id=task['card_id'], link=link, source='kaique-studio')
 
 
-def fetch_queue(base=DEFAULT_BASE, fetch=None):
-    """Puxa e normaliza a fila. `fetch(url) -> bytes` injetável para teste."""
+def fetch_queue(base=DEFAULT_BASE, fetch=None, key=None):
+    """Puxa e normaliza a fila. `fetch(url, key) -> bytes` injetável para teste."""
     fetch = fetch or live_fetch
-    return parse_queue(fetch(urljoin(base + '/', 'api/studio-queue')))
+    return parse_queue(fetch(urljoin(base + '/', 'api/studio-queue'), key))
 
 
-def deliver(task, link, base=DEFAULT_BASE, post=None):
-    """Entrega o export ao painel. `post(url, body_bytes) -> bytes` injetável."""
+def deliver(task, link, base=DEFAULT_BASE, post=None, key=None):
+    """Entrega o export ao painel. `post(url, body_bytes, key) -> bytes` injetável."""
     post = post or live_post
     body = json.dumps(delivery_payload(task, link)).encode('utf-8')
-    return post(urljoin(base + '/', 'api/studio-deliver'), body)
+    return post(urljoin(base + '/', 'api/studio-deliver'), body, key)
+
+
+def _headers(key):
+    # O Studio se identifica pela chave (X-Studio-Key), configurada na máquina do
+    # editor — nunca no código. Sem chave, o painel responde 401 (guarda ligada).
+    h = {'User-Agent': 'KaiqueStudio'}
+    if key:
+        h['X-Studio-Key'] = key
+    return h
 
 
 # ── Rede real (isolada, para o resto ser testável offline) ──────────────────
-def live_fetch(url, timeout=20):
+def live_fetch(url, key=None, timeout=20):
     import urllib.request
-    req = urllib.request.Request(url, headers={'User-Agent': 'KaiqueStudio'})
+    req = urllib.request.Request(url, headers=_headers(key))
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.read()
 
 
-def live_post(url, body, timeout=20):
+def live_post(url, body, key=None, timeout=20):
     import urllib.request
-    req = urllib.request.Request(url, data=body, method='POST',
-                                 headers={'User-Agent': 'KaiqueStudio', 'Content-Type': 'application/json'})
+    h = _headers(key); h['Content-Type'] = 'application/json'
+    req = urllib.request.Request(url, data=body, method='POST', headers=h)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.read()
