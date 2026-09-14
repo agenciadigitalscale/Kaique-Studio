@@ -36,7 +36,7 @@ def overlays_of(p):
 
 def project():
     return dict(version=VERSION, id=str(uuid.uuid4()), client='', source='', duration=0,
-                width=0, height=0, takes=[], words=[], ranges=[], script='', music='', music_volume=0.15,
+                width=0, height=0, takes=[], words=[], ranges=[], script='', music='', music_volume=0.15, music_fade=1.0,
                 sfx=[], sticker='', sticker_start=0, sticker_end=5, overlays=[], lut='',
                 color='#C9FF63', font_size=22, caption_mode='Palavra ativa', caption_style='Realce', keywords='',
                 filter='Original', transition='Nenhuma', zoom=1.0, captions_enabled=True,
@@ -120,6 +120,8 @@ def validate(p, files=True):
             raise ValueError('Posição do texto na tela inválida.')
         if not 12 <= int(t.get('size', 40)) <= 120:
             raise ValueError('Tamanho do texto na tela fora da faixa (12–120).')
+    if not 0 <= float(p.get('music_fade', 1.0)) <= 10:
+        raise ValueError('Fade da música fora da faixa (0–10s).')
     if p['filter'] not in FILTERS or not 1 <= float(p['zoom']) <= 1.3 or not 0 <= float(p['music_volume']) <= 1:
         raise ValueError('Ajuste de imagem ou áudio inválido.')
     if p.get('transition','Nenhuma') not in ['Nenhuma','Preto','Branco']:
@@ -502,7 +504,12 @@ def render(p, destination, progress=lambda s:None, preview=False):
             filters.append('[basev]null[outv]')
         labels=['[voice]'];filters.append('[0:a]anull[voice]')
         if music_index is not None:
-            filters.append(f'[{music_index}:a]volume={p["music_volume"]}[music]');labels.append('[music]')
+            total=min(duration(p),10) if preview else duration(p)
+            fade=max(0.0,float(p.get('music_fade',1.0)))
+            mf=f'volume={p["music_volume"]}'
+            if fade>0.01:  # entrada e saída suaves — trilha não estoura nem corta seco
+                mf+=f',afade=t=in:st=0:d={fade},afade=t=out:st={max(0,total-fade)}:d={fade}'
+            filters.append(f'[{music_index}:a]{mf}[music]');labels.append('[music]')
         for n,(idx,s) in enumerate(sfx_inputs):
             filters.append(f'[{idx}:a]volume={s["volume"]},adelay={round(s["time"]*1000)}:all=1[sfx{n}]');labels.append(f'[sfx{n}]')
         filters.append(''.join(labels)+f'amix=inputs={len(labels)}:duration=first:normalize=0,alimiter=limit=0.95:level=0[outa]')

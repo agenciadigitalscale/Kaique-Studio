@@ -3,7 +3,7 @@ import copy, json, math, subprocess, tempfile, uuid
 from pathlib import Path
 import core
 
-STYLE_KEYS=['music','music_volume','sfx','sticker','sticker_start','sticker_end','overlays','lut','color','font_size','caption_mode','caption_style','keywords','filter','transition','zoom','captions_enabled','aspect','quality','titles']
+STYLE_KEYS=['music','music_volume','music_fade','sfx','sticker','sticker_start','sticker_end','overlays','lut','color','font_size','caption_mode','caption_style','keywords','filter','transition','zoom','captions_enabled','aspect','quality','titles']
 def project():
     defaults=core.project()
     return dict(version=5,client='',script='',clips=[],style={k:defaults[k] for k in STYLE_KEYS})
