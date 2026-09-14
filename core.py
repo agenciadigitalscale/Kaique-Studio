@@ -600,6 +600,28 @@ QUALITIES = {'Máxima (4K)': 2160, 'Alta (1080p)': 1080, 'Média (720p)': 720, '
 ASPECT_CHOICES = ['Original'] + list(ASPECTS)
 QUALITY_CHOICES = list(QUALITIES)
 
+# Perfis de exportação: um clique já ajusta proporção + resolução para o destino,
+# do jeito que a pessoa pensa ("é pra Reels"), em vez de acertar dois combos.
+EXPORT_PROFILES = {
+    'Reels / TikTok / Story (9:16)': ('9:16', 'Alta (1080p)'),
+    'Feed Instagram (4:5)': ('4:5', 'Alta (1080p)'),
+    'Post quadrado (1:1)': ('1:1', 'Alta (1080p)'),
+    'YouTube (16:9)': ('16:9', 'Alta (1080p)'),
+    'YouTube 4K (16:9)': ('16:9', 'Máxima (4K)'),
+    'Original do take': ('Original', 'Alta (1080p)'),
+}
+
+
+def apply_export_profile(style, name):
+    """Devolve uma CÓPIA de `style` com a proporção e a resolução do perfil."""
+    if name not in EXPORT_PROFILES:
+        raise ValueError('Perfil de exportação desconhecido.')
+    aspect, quality = EXPORT_PROFILES[name]
+    out = dict(style)
+    out['aspect'] = aspect
+    out['quality'] = quality
+    return out
+
 
 DISSOLVE_OVERLAP = 0.4  # segundos que dois clipes se sobrepõem no crossfade
 

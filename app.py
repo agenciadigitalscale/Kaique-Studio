@@ -154,7 +154,9 @@ class Studio(QMainWindow):
         c.addWidget(row(button('➕ Texto na tela',self.add_title),button('Remover textos',lambda:self.clear_asset('titles'))))
         tabs.addTab(caption,'Legendas')
         image=QWidget();im=QVBoxLayout(image)
-        self.aspect=QComboBox();self.aspect.addItems(core.ASPECT_CHOICES);im.addWidget(label('Proporção da saída (Reels 9:16 · Feed 4:5 · YouTube 16:9)','title'));im.addWidget(self.aspect)
+        self.export_profile=QComboBox();self.export_profile.addItem('— escolher destino —');self.export_profile.addItems(list(core.EXPORT_PROFILES));self.export_profile.activated.connect(self.pick_export_profile)
+        im.addWidget(label('Exportar para (ajusta proporção + resolução)','title'));im.addWidget(self.export_profile)
+        self.aspect=QComboBox();self.aspect.addItems(core.ASPECT_CHOICES);im.addWidget(label('Proporção da saída (Reels 9:16 · Feed 4:5 · YouTube 16:9)'));im.addWidget(self.aspect)
         self.quality=QComboBox();self.quality.addItems(core.QUALITY_CHOICES);im.addWidget(label('Resolução'));im.addWidget(self.quality)
         self.look=QComboBox();self.look.addItems(core.FILTERS);im.addWidget(label('Filtro'));im.addWidget(self.look)
         self.transition=QComboBox();self.transition.addItems(['Nenhuma','Preto','Branco','Dissolve']);im.addWidget(label('Transição entre clipes'));im.addWidget(self.transition)
@@ -537,6 +539,12 @@ class Studio(QMainWindow):
     def clear_asset(self,key):
         try:self.sync();self.checkpoint();self.doc['style'][key]=[] if key in ('sfx','overlays','titles') else '';self.restore_ui()
         except Exception as exc:self.error(exc)
+    def pick_export_profile(self,idx):
+        if idx<=0:return
+        name=self.export_profile.itemText(idx)
+        aspect,quality=core.EXPORT_PROFILES[name]
+        self.aspect.setCurrentText(aspect);self.quality.setCurrentText(quality)
+        self.export_profile.setCurrentIndex(0);self.status.setText(f'Saída ajustada para "{name}".')
     def apply_speed(self):
         if self.active<0:return self.info('Selecione um take na lista.')
         v=round(self.speed.value(),2)
