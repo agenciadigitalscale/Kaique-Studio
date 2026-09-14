@@ -34,7 +34,10 @@ FILTERS = {
     'Cinza suave': 'hue=s=0,eq=contrast=1.05:brightness=0.02',
 }
 CAPTION_STYLES = ['Realce', 'Pop', 'Contorno', 'Salto', 'Zoom', 'Giro',
-                  'Neon', 'Sombra', 'Contorno grosso', 'Pulsar']
+                  'Neon', 'Sombra', 'Contorno grosso', 'Pulsar',
+                  'Elástico', 'Tremor', 'Balanço', 'Surgir', 'Ondular', 'Caixa',
+                  'Sublinhado', 'Itálico pop', 'Girar 360', 'Neon pulsante',
+                  'Contorno duplo', 'Encolher']
 
 
 def caption_active_tag(style, accent):
@@ -54,6 +57,18 @@ def caption_active_tag(style, accent):
         'Sombra':          '{' + A + r'\shad5\4c&H000000&}',
         'Contorno grosso': r'{\c&HFFFFFF&\bord9\3c' + accent + '}',
         'Pulsar':          '{' + A + r'\t(0,120,\fscx112\fscy112)\t(120,260,\fscx100\fscy100)}',
+        'Elástico':        '{' + A + r'\fscx60\fscy60\t(0,100,\fscx130\fscy130)\t(100,160,\fscx92\fscy92)\t(160,230,\fscx100\fscy100)}',
+        'Tremor':          '{' + A + r'\t(0,50,\frz4)\t(50,100,\frz-4)\t(100,150,\frz3)\t(150,200,\frz0)}',
+        'Balanço':         '{' + A + r'\frz-5\t(0,150,\frz5)\t(150,300,\frz-5)}',
+        'Surgir':          '{' + A + r'\alpha&HB0&\t(0,140,\alpha&H00&)}',
+        'Ondular':         '{' + A + r'\t(0,100,\fscy124)\t(100,220,\fscy92)\t(220,320,\fscy100)}',
+        'Caixa':           r'{\c&HFFFFFF&\bord16\3c' + accent + r'\3a&H15&}',
+        'Sublinhado':      '{' + A + r'\u1}',
+        'Itálico pop':     '{' + A + r'\i1\fscx84\fscy84\t(0,110,\fscx110\fscy110)\t(110,200,\fscx100\fscy100)}',
+        'Girar 360':       '{' + A + r'\frz-40\fscx80\fscy80\t(0,240,\frz0\fscx104\fscy104)\t(240,320,\fscx100\fscy100)}',
+        'Neon pulsante':   '{' + A + r'\bord2\3c' + accent + r'\blur4\t(0,160,\blur11)\t(160,320,\blur4)}',
+        'Contorno duplo':  '{' + A + r'\bord7\3c&H000000&}',
+        'Encolher':        '{' + A + r'\fscx122\fscy122\t(0,120,\fscx96\fscy96)\t(120,200,\fscx100\fscy100)}',
     }
     return tags.get(style, tags['Realce'])
 CORNERS = {'Superior direito': 'W-w-24:24', 'Superior esquerdo': '24:24',
