@@ -55,7 +55,7 @@ def project():
                 sfx=[], sticker='', sticker_start=0, sticker_end=5, overlays=[], lut='',
                 color='#C9FF63', font_size=22, caption_mode='Palavra ativa', caption_style='Realce', keywords='',
                 filter='Original', transition='Nenhuma', zoom=1.0, captions_enabled=True,
-                aspect='Original', quality='Alta (1080p)', titles=[], normalize_audio=True)
+                aspect='Original', quality='Alta (1080p)', titles=[], normalize_audio=True, denoise=True)
 
 
 # Textos/títulos na tela (hooks, chamadas) — independentes da legenda da fala.
@@ -527,7 +527,10 @@ def render(p, destination, progress=lambda s:None, preview=False):
                 current=out
         else:
             filters.append('[basev]null[outv]')
-        labels=['[voice]'];filters.append('[0:a]anull[voice]')
+        # Limpeza de voz: highpass tira o ronco (<80Hz, manuseio do celular) e o
+        # afftdn reduz o chiado de fundo — conservador para não roubar a voz.
+        voicef='highpass=f=80,afftdn=nf=-25' if p.get('denoise',True) else 'anull'
+        labels=['[voice]'];filters.append(f'[0:a]{voicef}[voice]')
         if music_index is not None:
             total=min(duration(p),10) if preview else duration(p)
             fade=max(0.0,float(p.get('music_fade',1.0)))
