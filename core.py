@@ -39,7 +39,8 @@ def project():
                 width=0, height=0, takes=[], words=[], ranges=[], script='', music='', music_volume=0.15,
                 sfx=[], sticker='', sticker_start=0, sticker_end=5, overlays=[], lut='',
                 color='#C9FF63', font_size=22, caption_mode='Palavra ativa', caption_style='Realce', keywords='',
-                filter='Original', transition='Nenhuma', zoom=1.0, captions_enabled=True)
+                filter='Original', transition='Nenhuma', zoom=1.0, captions_enabled=True,
+                aspect='Original', quality='Alta (1080p)')
 
 
 def ffmpeg():
@@ -100,6 +101,10 @@ def validate(p, files=True):
         raise ValueError('Estilo de legenda inválido.')
     if p.get('caption_style', 'Realce') not in CAPTION_STYLES:
         raise ValueError('Animação de legenda inválida.')
+    if p.get('aspect', 'Original') not in ASPECT_CHOICES:
+        raise ValueError('Proporção de saída inválida.')
+    if p.get('quality', 'Alta (1080p)') not in QUALITY_CHOICES:
+        raise ValueError('Resolução de saída inválida.')
     if p['filter'] not in FILTERS or not 1 <= float(p['zoom']) <= 1.3 or not 0 <= float(p['music_volume']) <= 1:
         raise ValueError('Ajuste de imagem ou áudio inválido.')
     if p.get('transition','Nenhuma') not in ['Nenhuma','Preto','Branco']:
@@ -495,8 +500,37 @@ def atomic_json(path,data):
     os.replace(temp,path)
 
 
-def assemble(paths, destination, progress=lambda message: None):
-    """Normalize takes into a persistent editing source; never modify originals."""
+# Proporção e resolução de SAÍDA. 'Original' mantém a do take. Os demais reenquadram
+# a sequência na moldura escolhida (com letterbox), sem tocar nos arquivos originais.
+ASPECTS = {'9:16': (9, 16), '1:1': (1, 1), '16:9': (16, 9), '4:5': (4, 5), '5:4': (5, 4), '4:3': (4, 3)}
+QUALITIES = {'Alta (1080p)': 1080, 'Média (720p)': 720, 'Leve (480p)': 480}
+ASPECT_CHOICES = ['Original'] + list(ASPECTS)
+QUALITY_CHOICES = list(QUALITIES)
+
+
+def target_dims(aspect, quality='Alta (1080p)'):
+    """Dimensões (par, largura×altura) da moldura de saída para a proporção e
+    resolução escolhidas. 'Original' devolve None (o pipeline usa a do take).
+
+    `quality` é o LADO MENOR (1080/720/480): num 9:16 é a largura (1080×1920),
+    num 16:9 é a altura (1920×1080) — é assim que 'resolução' é lida em vídeo.
+    """
+    if aspect not in ASPECTS:
+        return None
+    aw, ah = ASPECTS[aspect]
+    short = QUALITIES.get(quality, 1080)
+    if aw <= ah:
+        w, h = short, round(short * ah / aw)
+    else:
+        h, w = short, round(short * aw / ah)
+    return (max(2, w // 2 * 2), max(2, h // 2 * 2))
+
+
+def assemble(paths, destination, progress=lambda message: None, canvas=None):
+    """Normalize takes into a persistent editing source; never modify originals.
+
+    `canvas=(w,h)` força a moldura de saída (proporção/resolução escolhidas);
+    None mantém a dimensão do primeiro take (comportamento antigo)."""
     if not paths:
         raise ValueError('Selecione pelo menos um take.')
     target = Path(destination).resolve()
@@ -516,6 +550,8 @@ def assemble(paths, destination, progress=lambda message: None):
         width, height = height, width
     factor = min(1, 1920/max(width, height))
     width, height = max(2,int(width*factor)//2*2), max(2,int(height*factor)//2*2)
+    if canvas:  # proporção/resolução escolhidas vencem a dimensão do take
+        width, height = int(canvas[0])//2*2, int(canvas[1])//2*2
     exe = ffmpeg()
     takes = []
     offset = 0.0

@@ -146,7 +146,10 @@ class Studio(QMainWindow):
         self.keywords=QLineEdit();self.keywords.setPlaceholderText('Palavras-chave (vírgula) — vazio = destaque automático');c.addWidget(self.keywords)
         self.font=QSpinBox();self.font.setRange(10,50);c.addWidget(label('Tamanho da legenda'));c.addWidget(self.font)
         self.enabled=QCheckBox('Legendas na exportação');c.addWidget(self.enabled);tabs.addTab(caption,'Legendas')
-        image=QWidget();im=QVBoxLayout(image);self.look=QComboBox();self.look.addItems(core.FILTERS);im.addWidget(label('Filtro'));im.addWidget(self.look)
+        image=QWidget();im=QVBoxLayout(image)
+        self.aspect=QComboBox();self.aspect.addItems(core.ASPECT_CHOICES);im.addWidget(label('Proporção da saída (Reels 9:16 · Feed 4:5 · YouTube 16:9)','title'));im.addWidget(self.aspect)
+        self.quality=QComboBox();self.quality.addItems(core.QUALITY_CHOICES);im.addWidget(label('Resolução'));im.addWidget(self.quality)
+        self.look=QComboBox();self.look.addItems(core.FILTERS);im.addWidget(label('Filtro'));im.addWidget(self.look)
         self.transition=QComboBox();self.transition.addItems(['Nenhuma','Preto','Branco']);im.addWidget(label('Transição entre clipes'));im.addWidget(self.transition)
         self.volume=QSlider(Qt.Horizontal);self.volume.setRange(0,100);im.addWidget(label('Volume da música'));im.addWidget(self.volume)
         im.addWidget(button('Remover música',lambda:self.clear_asset('music')));im.addWidget(button('Remover LUT',lambda:self.clear_asset('lut')));im.addWidget(button('Remover efeitos sonoros',lambda:self.clear_asset('sfx')));im.addWidget(button('Remover imagens/ícones',lambda:self.clear_asset('overlays')))
@@ -176,7 +179,7 @@ class Studio(QMainWindow):
         if self.loading:return
         candidate=copy.deepcopy(self.doc)
         candidate.update(client=self.client.text(),script=self.script.toPlainText())
-        candidate['style'].update(caption_mode=self.mode.currentText(),caption_style=self.caption_style.currentText(),keywords=self.keywords.text(),font_size=self.font.value(),captions_enabled=self.enabled.isChecked(),filter=self.look.currentText(),transition=self.transition.currentText(),music_volume=self.volume.value()/100)
+        candidate['style'].update(caption_mode=self.mode.currentText(),caption_style=self.caption_style.currentText(),keywords=self.keywords.text(),font_size=self.font.value(),captions_enabled=self.enabled.isChecked(),filter=self.look.currentText(),transition=self.transition.currentText(),music_volume=self.volume.value()/100,aspect=self.aspect.currentText(),quality=self.quality.currentText())
         if 0<=self.active<len(candidate['clips']):
             words=[]
             for i in range(self.words.rowCount()):words.append(dict(start=float(self.words.item(i,0).text().replace(',','.')),end=float(self.words.item(i,1).text().replace(',','.')),text=self.words.item(i,2).text()))
@@ -207,7 +210,7 @@ class Studio(QMainWindow):
         self.active=min(self.active,len(self.doc['clips'])-1)
         if self.active<0 and self.doc['clips']:self.active=0
         self.clips.setCurrentRow(self.active);self.clips.blockSignals(False)
-        s=self.doc['style'];self.mode.setCurrentText(s['caption_mode']);self.caption_style.setCurrentText(s.get('caption_style','Realce'));self.keywords.setText(s['keywords']);self.font.setValue(s['font_size']);self.enabled.setChecked(s['captions_enabled']);self.look.setCurrentText(s['filter']);self.transition.setCurrentText(s['transition']);self.volume.setValue(round(s['music_volume']*100));self.client.setText(self.doc['client']);self.script.setPlainText(self.doc['script'])
+        s=self.doc['style'];self.mode.setCurrentText(s['caption_mode']);self.caption_style.setCurrentText(s.get('caption_style','Realce'));self.keywords.setText(s['keywords']);self.font.setValue(s['font_size']);self.enabled.setChecked(s['captions_enabled']);self.look.setCurrentText(s['filter']);self.transition.setCurrentText(s['transition']);self.volume.setValue(round(s['music_volume']*100));self.aspect.setCurrentText(s.get('aspect','Original'));self.quality.setCurrentText(s.get('quality','Alta (1080p)'));self.client.setText(self.doc['client']);self.script.setPlainText(self.doc['script'])
         self.effects.setText(f"Música: {Path(s['music']).name if s['music'] else 'nenhuma'}\nEfeitos sonoros: {len(s['sfx'])}\nLUT: {Path(s['lut']).name if s['lut'] else 'nenhuma'}")
         self.words.setRowCount(0)
         if self.active>=0:

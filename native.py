@@ -3,7 +3,7 @@ import copy, json, math, subprocess, tempfile, uuid
 from pathlib import Path
 import core
 
-STYLE_KEYS=['music','music_volume','sfx','sticker','sticker_start','sticker_end','overlays','lut','color','font_size','caption_mode','caption_style','keywords','filter','transition','zoom','captions_enabled']
+STYLE_KEYS=['music','music_volume','sfx','sticker','sticker_start','sticker_end','overlays','lut','color','font_size','caption_mode','caption_style','keywords','filter','transition','zoom','captions_enabled','aspect','quality']
 def project():
     defaults=core.project()
     return dict(version=5,client='',script='',clips=[],style={k:defaults[k] for k in STYLE_KEYS})
@@ -93,7 +93,7 @@ def render(p,destination,progress=lambda _:None,preview=False):
             part=work/f'clip{i}.mp4'
             core.run([exe,'-v','error','-nostdin','-ss',str(c['in']),'-i',c['source'],'-t',str(count),'-map','0:v:0','-map','0:a?','-c:v','libx264','-preset','veryfast','-crf','18','-threads','4','-c:a','aac',str(part)])
             paths.append(str(part))
-        assembled=core.assemble(paths,work/'sequence.mp4',progress)
+        assembled=core.assemble(paths,work/'sequence.mp4',progress,canvas=core.target_dims(q.get('aspect','Original'),q.get('quality','Alta (1080p)')))
         # Frame-rate conversion can shift boundaries by a fraction of a frame.
         captions=[];ranges=[];offset=0
         for c,t in zip(p['clips'],assembled['takes']):
