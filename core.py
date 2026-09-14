@@ -33,7 +33,29 @@ FILTERS = {
     'Sunset': 'colorbalance=rs=0.08:gs=0.02:bs=-0.08,eq=saturation=1.1',
     'Cinza suave': 'hue=s=0,eq=contrast=1.05:brightness=0.02',
 }
-CAPTION_STYLES = ['Realce', 'Pop', 'Contorno']
+CAPTION_STYLES = ['Realce', 'Pop', 'Contorno', 'Salto', 'Zoom', 'Giro',
+                  'Neon', 'Sombra', 'Contorno grosso', 'Pulsar']
+
+
+def caption_active_tag(style, accent):
+    """Tag ASS da PALAVRA ATIVA por estilo — o kit de legendas dinâmicas (estilo
+    Reels/TikTok). `accent` já vem no formato ASS (&H..BBGGRR&). São técnicas
+    padrão de animação (escala, rotação, contorno, brilho, sombra); nada copiado
+    de template de terceiros."""
+    A = r'\c' + accent
+    tags = {
+        'Realce':          '{' + A + '}',
+        'Pop':             '{' + A + r'\fscx82\fscy82\t(0,110,\fscx112\fscy112)\t(110,200,\fscx100\fscy100)}',
+        'Contorno':        r'{\c&HFFFFFF&\bord5\3c' + accent + '}',
+        'Salto':           '{' + A + r'\fscx68\fscy68\t(0,90,\fscx124\fscy124)\t(90,190,\fscx100\fscy100)}',
+        'Zoom':            '{' + A + r'\fscx140\fscy140\t(0,150,\fscx100\fscy100)}',
+        'Giro':            '{' + A + r'\frz-12\fscx84\fscy84\t(0,160,\frz0\fscx106\fscy106)\t(160,230,\fscx100\fscy100)}',
+        'Neon':            '{' + A + r'\bord2\3c' + accent + r'\blur7}',
+        'Sombra':          '{' + A + r'\shad5\4c&H000000&}',
+        'Contorno grosso': r'{\c&HFFFFFF&\bord9\3c' + accent + '}',
+        'Pulsar':          '{' + A + r'\t(0,120,\fscx112\fscy112)\t(120,260,\fscx100\fscy100)}',
+    }
+    return tags.get(style, tags['Realce'])
 CORNERS = {'Superior direito': 'W-w-24:24', 'Superior esquerdo': '24:24',
            'Inferior direito': 'W-w-24:H-h-24', 'Inferior esquerdo': '24:H-h-24'}
 
@@ -398,13 +420,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     # A decoração da palavra ativa muda com caption_style. Vale no modo
     # 'Palavra ativa', o único que anima palavra a palavra — os outros mostram
     # o grupo inteiro de uma vez, onde animar por palavra não faz sentido.
-    style=p.get('caption_style','Realce')
-    if style=='Pop':
-        active_tag='{\c'+accent+r'\fscx82\fscy82\t(0,110,\fscx112\fscy112)\t(110,200,\fscx100\fscy100)}'
-    elif style=='Contorno':
-        active_tag=r'{\c&HFFFFFF&\bord5\3c'+accent+'}'
-    else:
-        active_tag='{\c'+accent+'}'
+    active_tag=caption_active_tag(p.get('caption_style','Realce'),accent)
     def line(a,b,text):
         if b-a<0.005:
             return ''

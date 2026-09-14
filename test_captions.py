@@ -42,7 +42,7 @@ class CaptionStyleTests(unittest.TestCase):
         self.assertNotIn(r'\fscx82', ass)
 
     def test_validation_rejects_unknown_style(self):
-        p = _project_with_words(); p['caption_style'] = 'Neon'
+        p = _project_with_words(); p['caption_style'] = 'Glitch3D'
         with self.assertRaises(ValueError):
             core.validate(p, files=False)
 
