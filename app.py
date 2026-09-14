@@ -132,7 +132,7 @@ class Studio(QMainWindow):
         m.addWidget(row(button('✂  Cortar silêncios automaticamente',self.auto_cut_silences,True),label('Intensidade'),self.cut_level))
         m.addWidget(label('Legendar tudo: transcreve e já aplica um estilo. Cortar silêncios: remove as pausas. Ctrl+Z desfaz.','muted'))
         m.addWidget(row(button('Criar prévia leve',self.make_proxy),button('Prévia com efeitos',lambda:self.export(True))));m.addWidget(label('Player de takes segue a sequência; efeitos aparecem na prévia renderizada.'));split.addWidget(middle)
-        right,r=panel();tabs=QTabWidget();r.addWidget(tabs);split.addWidget(right);split.setSizes([230,880,380]);split.setStretchFactor(1,1)
+        right,r=panel();tabs=QTabWidget();r.addWidget(tabs);split.addWidget(right);split.setSizes([220,800,460]);split.setStretchFactor(1,1)
         command=QWidget();cm=QVBoxLayout(command);self.prompt=QPlainTextEdit();self.prompt.setPlaceholderText('cortes e legenda; filtro quente');cm.addWidget(self.prompt);cm.addWidget(button('Aplicar comandos',self.commands));cm.addWidget(label('Comandos predefinidos. Transcreva antes de solicitar cortes. Takes sem palavras são preservados; revise imagens de apoio.'));tabs.addTab(command,'Comandos')
         edit=QWidget();e=QVBoxLayout(edit);e.addWidget(label('Clipe selecionado','title'));self.ins=QDoubleSpinBox();self.outs=QDoubleSpinBox()
         for w in [self.ins,self.outs]:w.setDecimals(3);w.setRange(0,100000);w.setSuffix(' s')

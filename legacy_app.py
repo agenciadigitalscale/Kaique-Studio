@@ -29,7 +29,7 @@ QPushButton#primary {background:#c9ff63;color:#172109;font-weight:700;border:0;}
 QPushButton#primary:hover {background:#dcff9a;}
 QLineEdit,QPlainTextEdit,QSpinBox,QDoubleSpinBox,QComboBox {background:#11141a;border:1px solid #303641;border-radius:5px;padding:7px;selection-background-color:#455a2c;}
 QTabWidget::pane {border:0;}
-QTabBar::tab {background:#171a20;color:#9ca6b6;padding:11px 10px;border-bottom:2px solid transparent;}
+QTabBar::tab {background:#171a20;color:#9ca6b6;padding:8px 7px;font-size:11px;border-bottom:2px solid transparent;}
 QTabBar::tab:selected {color:#c9ff63;border-bottom:2px solid #c9ff63;}
 QTableWidget,QListWidget {background:#12151b;alternate-background-color:#1a1f28;border:1px solid #2a303b;gridline-color:#242a34;border-radius:5px;}
 QTableWidget::item,QListWidget::item {padding:6px;}
