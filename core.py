@@ -55,7 +55,13 @@ def project():
                 sfx=[], sticker='', sticker_start=0, sticker_end=5, overlays=[], lut='',
                 color='#C9FF63', font_size=22, caption_mode='Palavra ativa', caption_style='Realce', keywords='',
                 filter='Original', transition='Nenhuma', zoom=1.0, captions_enabled=True,
-                aspect='Original', quality='Alta (1080p)', titles=[], normalize_audio=True, denoise=True)
+                aspect='Original', quality='Alta (1080p)', titles=[], normalize_audio=True, denoise=True,
+                caption_pos='Embaixo')
+
+
+# Posição vertical da legenda da fala — (alinhamento ASS, margem). Deixa a pessoa
+# tirar a legenda de cima do rosto ou da interface do app.
+CAPTION_POSITIONS = {'Embaixo': (2, 90), 'Meio': (5, 0), 'Em cima': (8, 90)}
 
 
 # Textos/títulos na tela (hooks, chamadas) — independentes da legenda da fala.
@@ -98,7 +104,7 @@ def probe(path):
 
 def validate(p, files=True):
     if p.get('version') != VERSION:
-        raise ValueError('Projeto incompatível. Use um projeto criado no Studio 0.2.')
+        raise ValueError('Projeto incompatível ou corrompido. Abra um projeto válido do Kaique Studio, ou clique em Novo para começar.')
     d = float(p['duration'])
     if not math.isfinite(d) or d <= 0:
         raise ValueError('Importe um vídeo antes de continuar.')
@@ -124,6 +130,8 @@ def validate(p, files=True):
         raise ValueError('Estilo de legenda inválido.')
     if p.get('caption_style', 'Realce') not in CAPTION_STYLES:
         raise ValueError('Animação de legenda inválida.')
+    if p.get('caption_pos', 'Embaixo') not in CAPTION_POSITIONS:
+        raise ValueError('Posição de legenda inválida.')
     if p.get('aspect', 'Original') not in ASPECT_CHOICES:
         raise ValueError('Proporção de saída inválida.')
     if p.get('quality', 'Alta (1080p)') not in QUALITY_CHOICES:
@@ -356,6 +364,7 @@ def group_words(words, max_words=5, max_chars=30, gap=0.45):
 
 def make_ass(p):
     canvas_width = max(180,round(720*p.get('width',384)/max(1,p.get('height',288))))
+    _align, _mv = CAPTION_POSITIONS.get(p.get('caption_pos', 'Embaixo'), (2, 90))
     head = f'''[Script Info]
 ScriptType: v4.00+
 PlayResX: {canvas_width}
@@ -363,7 +372,7 @@ PlayResY: 720
 WrapStyle: 0
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Main,Arial,{round(p['font_size']*2.5)},&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,3,0,2,24,24,72,1
+Style: Main,Arial,{round(p['font_size']*2.5)},&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,3,0,{_align},24,24,{_mv},1
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 '''
