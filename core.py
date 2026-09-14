@@ -142,7 +142,7 @@ def validate(p, files=True):
         raise ValueError('Fade da música fora da faixa (0–10s).')
     if p['filter'] not in FILTERS or not 1 <= float(p['zoom']) <= 1.3 or not 0 <= float(p['music_volume']) <= 1:
         raise ValueError('Ajuste de imagem ou áudio inválido.')
-    if p.get('transition','Nenhuma') not in ['Nenhuma','Preto','Branco']:
+    if p.get('transition','Nenhuma') not in ['Nenhuma','Preto','Branco','Dissolve']:
         raise ValueError('Transição inválida.')
     if len(p['sfx']) > 20:
         raise ValueError('Limite desta versão: 20 efeitos sonoros por projeto.')
@@ -468,7 +468,7 @@ def render(p, destination, progress=lambda s:None, preview=False):
                 args+=['-f','lavfi','-i','anullsrc=r=48000:cl=stereo']
             vf='scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=30'
             transition=p.get('transition','Nenhuma')
-            if transition!='Nenhuma':
+            if transition in ('Preto','Branco'):  # Dissolve é tratado no join (xfade), não aqui
                 length=r['end']-r['start'];fade=min(.16,length/3);color='black' if transition=='Preto' else 'white'
                 if index>0:vf+=f',fade=t=in:st=0:d={fade}:color={color}'
                 if index<len(ranges)-1:vf+=f',fade=t=out:st={length-fade}:d={fade}:color={color}'
@@ -477,9 +477,38 @@ def render(p, destination, progress=lambda s:None, preview=False):
                    '-preset','veryfast','-crf','18','-pix_fmt','yuv420p','-threads','4','-c:a','pcm_s16le','-ar','48000','-ac','2',
                    str(work/f'part{index:04}.mkv')]
             run(args)
-        (work/'parts.txt').write_text(''.join(f"file 'part{i:04}.mkv'\n" for i in range(len(ranges))),encoding='utf-8')
-        run([exe,'-hide_banner','-loglevel','error','-nostdin','-n','-f','concat','-safe','1','-i','parts.txt',
-             '-c','copy','joined.mkv'],cwd=work)
+        dissolve=p.get('transition')=='Dissolve' and len(ranges)>1
+        if dissolve:
+            progress('Aplicando crossfade entre os clipes…')
+            durs=[probe(work/f'part{i:04}.mkv')['duration'] for i in range(len(ranges))]
+            D=min(DISSOLVE_OVERLAP,min(durs)/2.5)  # não passar de ~40% do menor clipe
+            join=[exe,'-hide_banner','-loglevel','error','-nostdin','-n']
+            for i in range(len(ranges)):join+=['-i',f'part{i:04}.mkv']
+            vparts=[];cur='[0:v]';run_len=durs[0]
+            for i in range(1,len(ranges)):
+                out='[vout]' if i==len(ranges)-1 else f'[vx{i}]'
+                vparts.append(f'{cur}[{i}:v]xfade=transition=fade:duration={D}:offset={run_len-D}{out}')
+                cur=out;run_len+=durs[i]-D
+            aparts=[];cura='[0:a]'
+            for i in range(1,len(ranges)):
+                outa='[aout]' if i==len(ranges)-1 else f'[ax{i}]'
+                aparts.append(f'{cura}[{i}:a]acrossfade=d={D}{outa}');cura=outa
+            join+=['-filter_complex',';'.join(vparts+aparts),'-map','[vout]','-map','[aout]',
+                   '-c:v','libx264','-preset','veryfast','-crf','18','-pix_fmt','yuv420p',
+                   '-c:a','pcm_s16le','-ar','48000','-ac','2','joined.mkv']
+            run(join,cwd=work)
+            # a linha do tempo encurtou: desloca palavras/efeitos/overlays/textos.
+            bounds=[sum(durs[:k+1]) for k in range(len(durs)-1)]
+            for w in p['words']:w['start']=dissolve_shift(w['start'],bounds,D);w['end']=dissolve_shift(w['end'],bounds,D)
+            for s in p['sfx']:s['time']=dissolve_shift(s['time'],bounds,D)
+            for o in p.get('overlays',[]):o['start']=dissolve_shift(o['start'],bounds,D);o['end']=dissolve_shift(o['end'],bounds,D)
+            for tt in p.get('titles',[]):tt['start']=dissolve_shift(tt['start'],bounds,D);tt['end']=dissolve_shift(tt['end'],bounds,D)
+            final_t=sum(durs)-(len(durs)-1)*D
+        else:
+            (work/'parts.txt').write_text(''.join(f"file 'part{i:04}.mkv'\n" for i in range(len(ranges))),encoding='utf-8')
+            run([exe,'-hide_banner','-loglevel','error','-nostdin','-n','-f','concat','-safe','1','-i','parts.txt',
+                 '-c','copy','joined.mkv'],cwd=work)
+            final_t=min(duration(p),10) if preview else duration(p)
         progress('Aplicando legendas, imagem e áudio…')
         rendered_info=probe(work/'joined.mkv')
         caption_project=copy.deepcopy(p)
@@ -532,7 +561,7 @@ def render(p, destination, progress=lambda s:None, preview=False):
         voicef='highpass=f=80,afftdn=nf=-25' if p.get('denoise',True) else 'anull'
         labels=['[voice]'];filters.append(f'[0:a]{voicef}[voice]')
         if music_index is not None:
-            total=min(duration(p),10) if preview else duration(p)
+            total=final_t
             fade=max(0.0,float(p.get('music_fade',1.0)))
             mf=f'volume={p["music_volume"]}'
             if fade>0.01:  # entrada e saída suaves — trilha não estoura nem corta seco
@@ -547,7 +576,7 @@ def render(p, destination, progress=lambda s:None, preview=False):
               if p.get('normalize_audio',True) else 'alimiter=limit=0.95:level=0')
         filters.append(''.join(labels)+f'amix=inputs={len(labels)}:duration=first:normalize=0,{tail}[outa]')
         args+=['-filter_complex',';'.join(filters),'-map','[outv]','-map','[outa]',
-               '-t',str(min(duration(p),10) if preview else duration(p)),
+               '-t',str(final_t),
                '-c:v','libx264','-preset','veryfast','-crf','20','-pix_fmt','yuv420p','-threads','4',
                '-c:a','aac','-movflags','+faststart','finished.mp4']
         run(args,cwd=work)
@@ -570,6 +599,20 @@ ASPECTS = {'9:16': (9, 16), '1:1': (1, 1), '16:9': (16, 9), '4:5': (4, 5), '5:4'
 QUALITIES = {'Máxima (4K)': 2160, 'Alta (1080p)': 1080, 'Média (720p)': 720, 'Leve (480p)': 480}
 ASPECT_CHOICES = ['Original'] + list(ASPECTS)
 QUALITY_CHOICES = list(QUALITIES)
+
+
+DISSOLVE_OVERLAP = 0.4  # segundos que dois clipes se sobrepõem no crossfade
+
+
+def dissolve_shift(t, boundaries, overlap=DISSOLVE_OVERLAP):
+    """Novo instante de um evento (palavra, efeito, texto) depois dos crossfades.
+
+    Cada transição que acontece ANTES de `t` encurta a linha do tempo em `overlap`
+    (os clipes se sobrepõem). Sem esse deslocamento a legenda ficaria adiantada
+    em relação à fala. `boundaries` são as fronteiras entre clipes (fins acumulados,
+    menos o último)."""
+    crossed = sum(1 for b in boundaries if b <= t + 1e-6)
+    return max(0.0, t - crossed * overlap)
 
 
 def target_dims(aspect, quality='Alta (1080p)'):

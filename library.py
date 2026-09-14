@@ -162,7 +162,7 @@ PRESET_KEYS = ['filter', 'transition', 'color', 'font_size', 'caption_mode', 'ca
                'zoom', 'music_volume', 'captions_enabled']
 
 _FILTERS = set(core.FILTERS)
-_TRANSITIONS = {'Nenhuma', 'Preto', 'Branco'}
+_TRANSITIONS = {'Nenhuma', 'Preto', 'Branco', 'Dissolve'}
 _CAPTION_MODES = {'Palavra ativa', 'Palavras-chave', 'Frase'}
 _CAPTION_STYLES = set(core.CAPTION_STYLES)
 
