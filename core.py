@@ -55,7 +55,7 @@ def project():
                 sfx=[], sticker='', sticker_start=0, sticker_end=5, overlays=[], lut='',
                 color='#C9FF63', font_size=22, caption_mode='Palavra ativa', caption_style='Realce', keywords='',
                 filter='Original', transition='Nenhuma', zoom=1.0, captions_enabled=True,
-                aspect='Original', quality='Alta (1080p)', titles=[])
+                aspect='Original', quality='Alta (1080p)', titles=[], normalize_audio=True)
 
 
 # Textos/títulos na tela (hooks, chamadas) — independentes da legenda da fala.
@@ -537,7 +537,12 @@ def render(p, destination, progress=lambda s:None, preview=False):
             filters.append(f'[{music_index}:a]{mf}[music]');labels.append('[music]')
         for n,(idx,s) in enumerate(sfx_inputs):
             filters.append(f'[{idx}:a]volume={s["volume"]},adelay={round(s["time"]*1000)}:all=1[sfx{n}]');labels.append(f'[sfx{n}]')
-        filters.append(''.join(labels)+f'amix=inputs={len(labels)}:duration=first:normalize=0,alimiter=limit=0.95:level=0[outa]')
+        # loudnorm alinha o volume ao padrão de redes sociais (−14 LUFS): take baixo
+        # sobe, take estourado desce, e o alimiter segura o pico. Consistência entre
+        # vídeos sem ninguém mexer no ganho na mão.
+        tail=('loudnorm=I=-14:TP=-1.5:LRA=11,alimiter=limit=0.95:level=0'
+              if p.get('normalize_audio',True) else 'alimiter=limit=0.95:level=0')
+        filters.append(''.join(labels)+f'amix=inputs={len(labels)}:duration=first:normalize=0,{tail}[outa]')
         args+=['-filter_complex',';'.join(filters),'-map','[outv]','-map','[outa]',
                '-t',str(min(duration(p),10) if preview else duration(p)),
                '-c:v','libx264','-preset','veryfast','-crf','20','-pix_fmt','yuv420p','-threads','4',
