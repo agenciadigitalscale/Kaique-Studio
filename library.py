@@ -159,12 +159,15 @@ def search_url(kind, query, source):
 # LUT e música continuam vindo como assets normais, porque são arquivos e o
 # caminho depende da máquina.
 PRESET_KEYS = ['filter', 'transition', 'color', 'font_size', 'caption_mode', 'caption_style',
-               'zoom', 'music_volume', 'captions_enabled']
+               'zoom', 'music_volume', 'captions_enabled',
+               'caption_pos', 'caption_colors', 'caption_emojis']
 
 _FILTERS = set(core.FILTERS)
 _TRANSITIONS = {'Nenhuma', 'Preto', 'Branco', 'Dissolve'}
 _CAPTION_MODES = {'Palavra ativa', 'Palavras-chave', 'Frase'}
 _CAPTION_STYLES = set(core.CAPTION_STYLES)
+_CAPTION_POSITIONS = set(core.CAPTION_POSITIONS)
+_CAPTION_COLOR_MODES = set(core.CAPTION_COLOR_MODES)
 
 
 def validate_preset(preset):
@@ -197,6 +200,12 @@ def validate_preset(preset):
             raise ValueError('Volume de música do preset fora da faixa (0–1).')
         if key == 'color' and not __import__('re').fullmatch(r'#[0-9A-Fa-f]{6}', str(value)):
             raise ValueError('Cor do preset inválida.')
+        if key == 'caption_pos' and value not in _CAPTION_POSITIONS:
+            raise ValueError('Posição de legenda do preset inválida.')
+        if key == 'caption_colors' and value not in _CAPTION_COLOR_MODES:
+            raise ValueError('Modo de cor de legenda do preset inválido.')
+        if key == 'caption_emojis' and not isinstance(value, bool):
+            raise ValueError('O ajuste de emojis do preset deve ser verdadeiro ou falso.')
 
 
 def apply_preset(style, preset):
@@ -212,20 +221,28 @@ def apply_preset(style, preset):
 
 
 # ── Modelos prontos de LEGENDA ──────────────────────────────────────────────
-# Um "modelo de legenda" é um preset focado só no texto na tela: junta o modo
-# (palavra ativa / frase…), a animação e o tamanho num clique. É o "escolher um
-# estilo de legenda pronto" que o dono pediu — sem ter que acertar 4 controles.
+# Cada modelo é um LOOK completo estilo "legenda dinâmica" do Envato: junta modo +
+# animação + cor por palavra + posição + emoji + destaque num clique. O grupo é o
+# que faz a legenda parecer editada à mão sem a pessoa acertar 8 controles.
 CAPTION_TEMPLATES = [
-    {'name': 'TikTok Pop', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Pop', 'font_size': 34, 'captions_enabled': True}},
-    {'name': 'Contorno forte', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Contorno', 'font_size': 32, 'captions_enabled': True}},
-    {'name': 'Realce (destaque na cor)', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Realce', 'font_size': 30, 'captions_enabled': True}},
-    {'name': 'Só palavras-chave', 'style': {'caption_mode': 'Palavras-chave', 'font_size': 32, 'captions_enabled': True}},
-    {'name': 'Frase cheia (legenda de fala)', 'style': {'caption_mode': 'Frase', 'font_size': 24, 'captions_enabled': True}},
-    {'name': 'Clean minimalista', 'style': {'caption_mode': 'Frase', 'caption_style': 'Realce', 'font_size': 22, 'captions_enabled': True}},
-    {'name': 'Impacto grande', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Contorno', 'font_size': 46, 'captions_enabled': True}},
-    {'name': 'Notícia (frase pequena)', 'style': {'caption_mode': 'Frase', 'caption_style': 'Contorno', 'font_size': 20, 'captions_enabled': True}},
-    {'name': 'Podcast (palavra ativa)', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Realce', 'font_size': 28, 'captions_enabled': True}},
-    {'name': 'Viral (pop grande)', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Pop', 'font_size': 40, 'captions_enabled': True}},
+    # — Virais / redes —
+    {'name': '🔥 Viral com emoji', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Pop', 'font_size': 40, 'color': '#FFD24A', 'caption_colors': 'Única', 'caption_emojis': True, 'caption_pos': 'Embaixo', 'captions_enabled': True}},
+    {'name': '🌈 Karaokê arco-íris', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Pulsar', 'font_size': 38, 'caption_colors': 'Arco-íris', 'caption_emojis': False, 'caption_pos': 'Embaixo', 'captions_enabled': True}},
+    {'name': '⚡ Salto alternado', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Salto', 'font_size': 36, 'caption_colors': 'Alternada', 'color': '#FFD24A', 'caption_emojis': True, 'caption_pos': 'Embaixo', 'captions_enabled': True}},
+    {'name': 'TikTok Pop', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Pop', 'font_size': 34, 'color': '#FFFFFF', 'caption_colors': 'Única', 'caption_pos': 'Embaixo', 'captions_enabled': True}},
+    {'name': '💜 Neon da balada', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Neon pulsante', 'font_size': 36, 'color': '#29B6F6', 'caption_colors': 'Única', 'caption_pos': 'Meio', 'captions_enabled': True}},
+    # — Impacto / título —
+    {'name': '📦 Caixa em destaque', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Caixa', 'font_size': 34, 'color': '#FFD24A', 'caption_colors': 'Única', 'caption_pos': 'Embaixo', 'captions_enabled': True}},
+    {'name': '🏆 Título gigante', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Contorno grosso', 'font_size': 46, 'color': '#FFFFFF', 'caption_colors': 'Única', 'caption_pos': 'Meio', 'captions_enabled': True}},
+    {'name': 'Contorno forte', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Contorno', 'font_size': 32, 'caption_pos': 'Embaixo', 'captions_enabled': True}},
+    {'name': 'Realce (destaque na cor)', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Realce', 'font_size': 30, 'caption_pos': 'Embaixo', 'captions_enabled': True}},
+    # — Fala / conteúdo —
+    {'name': '🎙️ Podcast no meio', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Realce', 'font_size': 28, 'caption_colors': 'Única', 'caption_pos': 'Meio', 'captions_enabled': True}},
+    {'name': '⬆️ Emoji no topo', 'style': {'caption_mode': 'Palavra ativa', 'caption_style': 'Surgir', 'font_size': 32, 'caption_emojis': True, 'caption_pos': 'Em cima', 'captions_enabled': True}},
+    {'name': '✨ Só palavras-chave', 'style': {'caption_mode': 'Palavras-chave', 'font_size': 34, 'caption_emojis': True, 'caption_pos': 'Meio', 'captions_enabled': True}},
+    {'name': 'Frase cheia (legenda de fala)', 'style': {'caption_mode': 'Frase', 'caption_style': 'Sombra', 'font_size': 24, 'caption_pos': 'Embaixo', 'captions_enabled': True}},
+    {'name': 'Clean minimalista', 'style': {'caption_mode': 'Frase', 'caption_style': 'Realce', 'font_size': 22, 'caption_colors': 'Única', 'color': '#FFFFFF', 'caption_pos': 'Embaixo', 'captions_enabled': True}},
+    {'name': '📰 Notícia (frase pequena)', 'style': {'caption_mode': 'Frase', 'caption_style': 'Caixa', 'font_size': 20, 'caption_pos': 'Embaixo', 'captions_enabled': True}},
     {'name': 'Sem legenda', 'style': {'captions_enabled': False}},
 ]
 
