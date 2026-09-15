@@ -254,7 +254,7 @@ def validate(p, files=True):
         raise ValueError('Fade da música fora da faixa (0–10s).')
     if p['filter'] not in FILTERS or not 1 <= float(p['zoom']) <= 1.3 or not 0 <= float(p['music_volume']) <= 1:
         raise ValueError('Ajuste de imagem ou áudio inválido.')
-    if p.get('transition','Nenhuma') not in ['Nenhuma','Preto','Branco','Dissolve']:
+    if p.get('transition','Nenhuma') not in TRANSITIONS:
         raise ValueError('Transição inválida.')
     if len(p['sfx']) > 20:
         raise ValueError('Limite desta versão: 20 efeitos sonoros por projeto.')
@@ -594,9 +594,10 @@ def render(p, destination, progress=lambda s:None, preview=False):
                    '-preset','veryfast','-crf','18','-pix_fmt','yuv420p','-threads','4','-c:a','pcm_s16le','-ar','48000','-ac','2',
                    str(work/f'part{index:04}.mkv')]
             run(args)
-        dissolve=p.get('transition')=='Dissolve' and len(ranges)>1
+        xfade_type=XFADE_MAP.get(p.get('transition',''))
+        dissolve=xfade_type is not None and len(ranges)>1
         if dissolve:
-            progress('Aplicando crossfade entre os clipes…')
+            progress('Aplicando transição entre os clipes…')
             durs=[probe(work/f'part{i:04}.mkv')['duration'] for i in range(len(ranges))]
             D=min(DISSOLVE_OVERLAP,min(durs)/2.5)  # não passar de ~40% do menor clipe
             join=[exe,'-hide_banner','-loglevel','error','-nostdin','-n']
@@ -604,7 +605,7 @@ def render(p, destination, progress=lambda s:None, preview=False):
             vparts=[];cur='[0:v]';run_len=durs[0]
             for i in range(1,len(ranges)):
                 out='[vout]' if i==len(ranges)-1 else f'[vx{i}]'
-                vparts.append(f'{cur}[{i}:v]xfade=transition=fade:duration={D}:offset={run_len-D}{out}')
+                vparts.append(f'{cur}[{i}:v]xfade=transition={xfade_type}:duration={D}:offset={run_len-D}{out}')
                 cur=out;run_len+=durs[i]-D
             aparts=[];cura='[0:a]'
             for i in range(1,len(ranges)):
@@ -741,6 +742,26 @@ def apply_export_profile(style, name):
 
 
 DISSOLVE_OVERLAP = 0.4  # segundos que dois clipes se sobrepõem no crossfade
+
+# Transições entre clipes. 'Nenhuma' = corte seco; 'Preto'/'Branco' = fade por
+# cor em cada clipe; o resto são transições animadas do xfade do FFmpeg (o mesmo
+# motor do Dissolve), cada nome amigável mapeado para o tipo real do xfade.
+# Só entram tipos confirmados por render no FFmpeg empacotado (ver test_transitions).
+XFADE_MAP = {
+    'Dissolve':      'fade',
+    'Deslizar ◀':    'slideleft',
+    'Deslizar ▶':    'slideright',
+    'Deslizar ▲':    'slideup',
+    'Deslizar ▼':    'slidedown',
+    'Varredura ▶':   'wiperight',
+    'Varredura ▲':   'wipeup',
+    'Círculo':       'circleopen',
+    'Radial':        'radial',
+    'Zoom':          'zoomin',
+    'Pixelizar':     'pixelize',
+    'Suave ▶':       'smoothright',
+}
+TRANSITIONS = ['Nenhuma', 'Preto', 'Branco'] + list(XFADE_MAP)
 
 
 def dissolve_shift(t, boundaries, overlap=DISSOLVE_OVERLAP):

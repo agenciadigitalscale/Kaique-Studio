@@ -162,7 +162,7 @@ class Studio(QMainWindow):
         self.aspect=QComboBox();self.aspect.addItems(core.ASPECT_CHOICES);im.addWidget(label('Proporção da saída (Reels 9:16 · Feed 4:5 · YouTube 16:9)'));im.addWidget(self.aspect)
         self.quality=QComboBox();self.quality.addItems(core.QUALITY_CHOICES);im.addWidget(label('Resolução'));im.addWidget(self.quality)
         self.look=QComboBox();self.look.addItems(core.FILTERS);im.addWidget(label('Filtro'));im.addWidget(self.look)
-        self.transition=QComboBox();self.transition.addItems(['Nenhuma','Preto','Branco','Dissolve']);im.addWidget(label('Transição entre clipes'));im.addWidget(self.transition)
+        self.transition=QComboBox();self.transition.addItems(core.TRANSITIONS);im.addWidget(label('Transição entre clipes'));im.addWidget(self.transition)
         self.volume=QSlider(Qt.Horizontal);self.volume.setRange(0,100);im.addWidget(label('Volume da música'));im.addWidget(self.volume)
         self.music_fade=QDoubleSpinBox();self.music_fade.setRange(0,10);self.music_fade.setDecimals(1);self.music_fade.setSingleStep(0.5);self.music_fade.setSuffix(' s');im.addWidget(label('Fade da música (entrada/saída suave)'));im.addWidget(self.music_fade)
         im.addWidget(button('➕ Vídeo sobreposto (b-roll / meme)',self.add_video_overlay,True))
