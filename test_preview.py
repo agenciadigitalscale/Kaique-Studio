@@ -53,5 +53,22 @@ class PreviewThumbnailTests(unittest.TestCase):
                 core.preview_thumbnail(str(Path(d) / 'nope.mp4'), str(Path(d) / 'x.jpg'))
 
 
+class PreviewTransitionTests(unittest.TestCase):
+    def test_every_transition_renders_a_mid_frame(self):
+        with tempfile.TemporaryDirectory() as d:
+            for name, xtype in core.XFADE_MAP.items():
+                dest = Path(d) / f'{xtype}.jpg'
+                core.preview_transition(xtype, str(dest), width=240, height=150)
+                self.assertTrue(dest.is_file(), f'Transição {name!r} não gerou prévia')
+                self.assertGreater(dest.stat().st_size, 500)
+
+    def test_width_respected(self):
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as d:
+            dest = core.preview_transition('fade', str(Path(d) / 't.jpg'), width=200, height=120)
+            with Image.open(dest) as im:
+                self.assertEqual((im.width, im.height), (200, 120))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -14,18 +14,18 @@ import core,native,bridge
 from legacy_app import STYLE,STATE,BASE,Job,button,label,row,panel
 
 class EffectGalleryDialog(QDialog):
-    """Galeria de prévias dos filtros: cada um aplicado a um frame do take atual,
-    para escolher VENDO em vez de pelo nome. Renderiza uma vez (com barra de
-    progresso) e guarda em cache na sessão; clicar num efeito escolhe o filtro.
-    Uma prévia que falhar vira '(sem prévia)' sem derrubar a grade."""
-    def __init__(self,parent,source,seconds):
+    """Galeria de prévias: uma grade de miniaturas para escolher VENDO em vez de pelo
+    nome. Genérica — `render(name, dest)` desenha cada item (filtro no take atual,
+    transição num A→B sintético…). Renderiza com barra de progresso, guarda em cache
+    na sessão (`slug`); clicar escolhe. Prévia que falhar vira '(sem prévia)' sem
+    derrubar a grade."""
+    def __init__(self,parent,title,hint,names,render,slug):
         super().__init__(parent)
-        self.setWindowTitle('Prévias dos filtros');self.resize(940,660);self.chosen=None
+        self.setWindowTitle(title);self.resize(940,660);self.chosen=None
         lay=QVBoxLayout(self)
-        lay.addWidget(label('Toque no efeito que você quer — a miniatura é o SEU take com o filtro aplicado.'))
+        lay.addWidget(label(hint))
         scroll=QScrollArea();scroll.setWidgetResizable(True);lay.addWidget(scroll,1)
         host=QWidget();grid=QGridLayout(host);grid.setSpacing(10);scroll.setWidget(host)
-        names=list(core.FILTERS)
         cache=Path(tempfile.gettempdir())/'kstudio_gallery';cache.mkdir(exist_ok=True)
         prog=QProgressDialog('Gerando prévias…','Cancelar',0,len(names),self)
         prog.setWindowModality(Qt.WindowModal);prog.setMinimumDuration(0)
@@ -33,10 +33,9 @@ class EffectGalleryDialog(QDialog):
         for i,name in enumerate(names):
             prog.setValue(i)
             if prog.wasCanceled():break
-            dest=cache/f'f{i}.jpg';pix=QPixmap()
+            dest=cache/f'{slug}_{i}.jpg';pix=QPixmap()
             try:
-                core.preview_thumbnail(source,str(dest),vf=core.FILTERS[name],seconds=seconds,width=240)
-                pix=QPixmap(str(dest))
+                render(name,str(dest));pix=QPixmap(str(dest))
             except Exception:
                 pass
             grid.addWidget(self._cell(name,pix),i//cols,i%cols)
@@ -204,6 +203,7 @@ class Studio(QMainWindow):
         self.look=QComboBox();self.look.addItems(core.FILTERS);im.addWidget(label('Filtro'));im.addWidget(self.look)
         im.addWidget(button('🖼️ Ver prévias dos filtros',self.open_filter_gallery))
         self.transition=QComboBox();self.transition.addItems(core.TRANSITIONS);im.addWidget(label('Transição entre clipes'));im.addWidget(self.transition)
+        im.addWidget(button('🎞️ Ver prévias das transições',self.open_transition_gallery))
         self.volume=QSlider(Qt.Horizontal);self.volume.setRange(0,100);im.addWidget(label('Volume da música'));im.addWidget(self.volume)
         self.music_fade=QDoubleSpinBox();self.music_fade.setRange(0,10);self.music_fade.setDecimals(1);self.music_fade.setSingleStep(0.5);self.music_fade.setSuffix(' s');im.addWidget(label('Fade da música (entrada/saída suave)'));im.addWidget(self.music_fade)
         im.addWidget(button('➕ Vídeo sobreposto (b-roll / meme)',self.add_video_overlay,True))
@@ -598,11 +598,22 @@ class Studio(QMainWindow):
         clips=self.doc['clips']
         if not clips:return self.info('Importe um take primeiro para ver as prévias.')
         c=clips[self.active] if 0<=self.active<len(clips) else clips[0]
-        try:dlg=EffectGalleryDialog(self,c['source'],(c['in']+c['out'])/2)
-        except Exception as exc:return self.error(exc)
+        seconds=(c['in']+c['out'])/2
+        render=lambda name,dest:core.preview_thumbnail(c['source'],dest,vf=core.FILTERS[name],seconds=seconds,width=240)
+        dlg=EffectGalleryDialog(self,'Prévias dos filtros',
+            'Toque no efeito que você quer — a miniatura é o SEU take com o filtro aplicado.',
+            list(core.FILTERS),render,'filter')
         if dlg.exec() and dlg.chosen:
             self.look.setCurrentText(dlg.chosen)
             self.status.setText(f'Filtro "{dlg.chosen}" escolhido na galeria.')
+    def open_transition_gallery(self):
+        render=lambda name,dest:core.preview_transition(core.XFADE_MAP[name],dest,width=240)
+        dlg=EffectGalleryDialog(self,'Prévias das transições',
+            'A miniatura mostra o MOVIMENTO da transição no meio (A → B). Toque para escolher.',
+            list(core.XFADE_MAP),render,'trans')
+        if dlg.exec() and dlg.chosen:
+            self.transition.setCurrentText(dlg.chosen)
+            self.status.setText(f'Transição "{dlg.chosen}" escolhida na galeria.')
     def add_video_overlay(self):
         if not self.doc['clips']:return self.info('Importe os takes primeiro.')
         exts=' '.join('*'+x for x in sorted(core.VIDEO_EXT))

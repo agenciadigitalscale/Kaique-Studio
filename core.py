@@ -225,6 +225,26 @@ def preview_thumbnail(source, dest, vf='', lut=None, seconds=1.0, width=320):
     return str(dest)
 
 
+def preview_transition(xfade_type, dest, width=320, height=180):
+    """Miniatura de uma transição: dois frames contrastantes (barras coloridas → laranja)
+    no MEIO do xfade, para a FORMA (deslizar/varredura/círculo/pixelizar) ficar óbvia.
+
+    Não usa o take do usuário de propósito — a prévia mostra o MOVIMENTO, não o
+    conteúdo, que é o que se escolhe numa transição (igual às miniaturas do CapCut).
+    `xfade_type` é o tipo real do FFmpeg (valor do `XFADE_MAP`). Determinístico.
+    """
+    D = 1.0
+    fc = (f'[0:v]format=yuv420p[a];[1:v]format=yuv420p[b];'
+          f'[a][b]xfade=transition={xfade_type}:duration={D}:offset=0[v]')
+    args = [ffmpeg(), '-y',
+            '-f', 'lavfi', '-i', f'smptebars=size={int(width)}x{int(height)}:duration={D}:rate=25',
+            '-f', 'lavfi', '-i', f'color=c=0xF5A623:size={int(width)}x{int(height)}:duration={D}:rate=25',
+            '-filter_complex', fc, '-map', '[v]', '-ss', f'{D/2:.3f}',
+            '-frames:v', '1', '-q:v', '3', str(Path(dest).resolve())]
+    run(args)
+    return str(dest)
+
+
 def probe(path):
     import av
     with av.open(str(path)) as media:
