@@ -32,12 +32,21 @@ FILTERS = {
     'Noturno': 'eq=brightness=-0.04:contrast=1.1:saturation=1.15:gamma_b=1.05',
     'Sunset': 'colorbalance=rs=0.08:gs=0.02:bs=-0.08,eq=saturation=1.1',
     'Cinza suave': 'hue=s=0,eq=contrast=1.05:brightness=0.02',
+    'Comida vibrante': 'eq=saturation=1.3:contrast=1.08:gamma_r=1.03:gamma_g=1.02',
+    'Lomo': 'curves=preset=strong_contrast,eq=saturation=1.2,vignette=PI/4',
+    'Matinal': 'eq=brightness=0.06:saturation=1.1:gamma_r=1.03:gamma_b=1.02',
+    'P&B dramático': 'hue=s=0,curves=preset=strong_contrast',
+    'Cine frio': 'curves=preset=medium_contrast,colorbalance=bs=0.08:rs=-0.04,eq=saturation=1.05',
+    'Âmbar': 'colorbalance=rs=0.06:gs=0.03:bs=-0.07,eq=saturation=1.12:gamma_r=1.04',
+    'Vidro fosco': 'gblur=sigma=1.2,eq=brightness=0.03:contrast=0.98',
+    'Clarão': 'eq=brightness=0.05:contrast=1.06,unsharp=3:3:0.4:3:3:0.0',
 }
 CAPTION_STYLES = ['Realce', 'Pop', 'Contorno', 'Salto', 'Zoom', 'Giro',
                   'Neon', 'Sombra', 'Contorno grosso', 'Pulsar',
                   'Elástico', 'Tremor', 'Balanço', 'Surgir', 'Ondular', 'Caixa',
                   'Sublinhado', 'Itálico pop', 'Girar 360', 'Neon pulsante',
-                  'Contorno duplo', 'Encolher']
+                  'Contorno duplo', 'Encolher',
+                  'Piscar', 'Carimbo', 'Brilho', 'Salto duplo']
 
 
 def caption_active_tag(style, accent):
@@ -69,6 +78,10 @@ def caption_active_tag(style, accent):
         'Neon pulsante':   '{' + A + r'\bord2\3c' + accent + r'\blur4\t(0,160,\blur11)\t(160,320,\blur4)}',
         'Contorno duplo':  '{' + A + r'\bord7\3c&H000000&}',
         'Encolher':        '{' + A + r'\fscx122\fscy122\t(0,120,\fscx96\fscy96)\t(120,200,\fscx100\fscy100)}',
+        'Piscar':          '{' + A + r'\t(0,90,\alpha&H70&)\t(90,180,\alpha&H00&)}',
+        'Carimbo':         '{' + A + r'\fscx150\fscy150\frz-6\t(0,130,\fscx100\fscy100\frz0)}',
+        'Brilho':          '{' + A + r'\bord1\3c' + accent + r'\blur3\t(0,150,\blur9)\t(150,300,\blur3)}',
+        'Salto duplo':     '{' + A + r'\fscy70\t(0,90,\fscy120)\t(90,150,\fscy88)\t(150,220,\fscy100)}',
     }
     return tags.get(style, tags['Realce'])
 
@@ -846,6 +859,12 @@ XFADE_MAP = {
     'Zoom':          'zoomin',
     'Pixelizar':     'pixelize',
     'Suave ▶':       'smoothright',
+    'Varredura ◀':   'wipeleft',
+    'Varredura ▼':   'wipedown',
+    'Círculo fecha':  'circleclose',
+    'Abrir ▬':       'horzopen',
+    'Abrir ▮':       'vertopen',
+    'Diagonal ◤':    'diagtl',
 }
 TRANSITIONS = ['Nenhuma', 'Preto', 'Branco'] + list(XFADE_MAP)
 
