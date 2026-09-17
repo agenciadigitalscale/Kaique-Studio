@@ -97,3 +97,30 @@ class SyncTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ManifestSecurityTests(unittest.TestCase):
+    def test_rejects_path_traversal_and_absolute_ids(self):
+        # id vira nome de arquivo — nenhum destes pode passar (escreveria fora do acervo).
+        for bad in ['../evil', '..\evil', 'a/b', 'a\b', 'C:/x', '..', './x', 'x/../y']:
+            m = {'packs': [{'id': bad, 'kind': 'Efeitos sonoros', 'title': 'x',
+                            'ext': '.mp3', 'url': 'https://exemplo/x.mp3'}]}
+            with self.assertRaises(ValueError, msg=f'aceitou id perigoso: {bad!r}'):
+                updates.parse_manifest(m)
+
+    def test_accepts_normal_ids(self):
+        for ok in ['up_boom', 'sfx-1', 'meme.pop', 'Neon2']:
+            m = {'packs': [{'id': ok, 'kind': 'Efeitos sonoros', 'title': 'x',
+                            'ext': '.mp3', 'url': 'https://exemplo/x.mp3'}]}
+            self.assertEqual(updates.parse_manifest(m)[0]['id'], ok)
+
+
+class DownloadLimitTests(unittest.TestCase):
+    def test_reads_under_the_limit(self):
+        import io
+        self.assertEqual(updates._read_limited(io.BytesIO(b'abc' * 10), limit=1000), b'abc' * 10)
+
+    def test_raises_over_the_limit(self):
+        import io
+        with self.assertRaises(ValueError):
+            updates._read_limited(io.BytesIO(b'x' * 5000), limit=1000)

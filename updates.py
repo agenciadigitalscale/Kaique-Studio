@@ -9,9 +9,23 @@ O download é INJETADO (parâmetro `fetch`/`download`): assim a lógica de
 "o que é novo" e "instalar" roda em teste sem rede. A camada de rede real
 (`live_fetch`) fica isolada no fim.
 """
-import json
+import json, re
 from urllib.parse import urlparse
 import library
+
+# O `id` do pacote vira NOME DE ARQUIVO no acervo (add_update_asset). Um manifesto
+# hostil poderia mandar `id` com `../` ou caminho absoluto e escrever FORA da pasta
+# (CWE-22). O cliente nunca deve confiar no manifesto para isso: aqui exigimos um id
+# de identificador — começa alfanumérico, só letras/números/._- e nunca `..`.
+_SAFE_ID = re.compile(r'[A-Za-z0-9][A-Za-z0-9._-]{0,119}')
+
+def _valid_id(value):
+    return bool(_SAFE_ID.fullmatch(str(value))) and '..' not in str(value)
+
+# Asset é som/ícone/LUT/fonte — arquivos pequenos. Um teto evita que um pacote
+# gigante (catálogo comprometido ou publicado errado) estoure memória/disco do
+# editor num `resp.read()` sem limite.
+MAX_DOWNLOAD = 64 * 1024 * 1024  # 64 MB
 
 # O catálogo é servido pelo DS HUB (GET /api/studio-catalog): a equipe publica
 # novidade gravando a chave `sm_studio_catalog` no painel, sem redeploy nem
@@ -37,6 +51,8 @@ def parse_manifest(data):
     for p in data['packs']:
         if not isinstance(p, dict) or not p.get('id') or not p.get('kind') or not p.get('title'):
             raise ValueError('Pacote sem id, tipo ou título.')
+        if not _valid_id(p['id']):
+            raise ValueError('Id de pacote inválido (só letras, números, ponto, _ e -): ' + str(p['id']))
         if p['kind'] == 'Presets':
             library.validate_preset(p.get('preset', {}))  # preset embutido tem de ser válido
         else:
@@ -93,8 +109,23 @@ def sync(catalog, fetch=None, download=None):
 
 
 # ── Camada de rede real (isolada, para o resto ser testável offline) ────────
-def live_fetch(url, timeout=20):
+def _read_limited(resp, limit=MAX_DOWNLOAD):
+    """Lê no máximo `limit` bytes de `resp` (qualquer objeto com `.read(n)`), em
+    pedaços, e para com aviso se passar. Puro de propósito — testável sem rede."""
+    chunks, total = [], 0
+    while True:
+        chunk = resp.read(65536)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > limit:
+            raise ValueError('Pacote grande demais (limite de %d MB).' % (limit // (1024 * 1024)))
+        chunks.append(chunk)
+    return b''.join(chunks)
+
+
+def live_fetch(url, timeout=20, max_bytes=MAX_DOWNLOAD):
     import urllib.request
     req = urllib.request.Request(url, headers={'User-Agent': 'KaiqueStudio'})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read()
+        return _read_limited(resp, max_bytes)
