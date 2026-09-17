@@ -70,5 +70,20 @@ class PreviewTransitionTests(unittest.TestCase):
                 self.assertEqual((im.width, im.height), (200, 120))
 
 
+class PreviewCaptionTests(unittest.TestCase):
+    def test_every_caption_style_renders(self):
+        with tempfile.TemporaryDirectory() as d:
+            for style in core.CAPTION_STYLES:
+                dest = Path(d) / f'{style}.jpg'
+                core.preview_caption(style, str(dest), width=300, height=170)
+                self.assertTrue(dest.is_file(), f'Estilo {style!r} não gerou prévia')
+                self.assertGreater(dest.stat().st_size, 400)
+
+    def test_unknown_style_raises(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(ValueError):
+                core.preview_caption('NãoExiste', str(Path(d) / 'x.jpg'))
+
+
 if __name__ == '__main__':
     unittest.main()

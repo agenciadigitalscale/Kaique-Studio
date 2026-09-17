@@ -245,6 +245,38 @@ def preview_transition(xfade_type, dest, width=320, height=180):
     return str(dest)
 
 
+def preview_caption(style, dest, accent='#C9FF63', text='EXEMPLO', width=360, height=200, at=0.13):
+    """Miniatura de um ESTILO de legenda: a palavra `text` desenhada nesse estilo
+    sobre um frame escuro, perto do pico da animação (`at`). Usa a MESMA tag do
+    render real (`caption_active_tag`), então a prévia bate com o resultado —
+    mostra o tratamento visual (cor/contorno/neon/caixa/sublinhado…). Determinístico.
+    """
+    if style not in CAPTION_STYLES:
+        raise ValueError('Estilo de legenda desconhecido: ' + str(style))
+    fs = max(18, round(int(height) * 0.26))
+    atag = caption_active_tag(style, ass_color(accent))
+    ass = ('[Script Info]\nScriptType: v4.00+\n'
+           f'PlayResX: {int(width)}\nPlayResY: {int(height)}\nWrapStyle: 0\n'
+           '[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, '
+           'OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, '
+           'Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n'
+           f'Style: Main,Arial,{fs},&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,-1,0,0,0,'
+           '100,100,0,0,1,3,0,5,10,10,10,1\n'
+           '[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n'
+           f'Dialogue: 0,0:00:00.00,0:00:03.00,Main,,0,0,0,,{atag}{safe_text(text)}\n')
+    tmp = tempfile.mkdtemp(prefix='kstudio_cap_')
+    try:
+        (Path(tmp) / 'p.ass').write_text(ass, encoding='utf-8')
+        args = [ffmpeg(), '-y', '-f', 'lavfi', '-i',
+                f'color=c=0x141414:size={int(width)}x{int(height)}:duration=3:rate=25',
+                '-vf', 'subtitles=p.ass', '-ss', f'{max(0.0, float(at)):.3f}',
+                '-frames:v', '1', '-q:v', '3', str(Path(dest).resolve())]
+        run(args, cwd=tmp)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return str(dest)
+
+
 def probe(path):
     import av
     with av.open(str(path)) as media:

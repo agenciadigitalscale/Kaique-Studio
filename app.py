@@ -1,5 +1,5 @@
 from __future__ import annotations
-import copy,json,sys,tempfile,time,uuid
+import copy,hashlib,json,os,sys,tempfile,time,uuid
 from pathlib import Path
 from PySide6.QtCore import Qt,QUrl,QTimer,Signal,QRectF,QSize
 from PySide6.QtGui import QPainter,QColor,QPen,QPixmap,QAction,QKeySequence,QShortcut
@@ -19,25 +19,28 @@ class EffectGalleryDialog(QDialog):
     transição num A→B sintético…). Renderiza com barra de progresso, guarda em cache
     na sessão (`slug`); clicar escolhe. Prévia que falhar vira '(sem prévia)' sem
     derrubar a grade."""
-    def __init__(self,parent,title,hint,names,render,slug):
+    CACHE=Path(os.environ.get('LOCALAPPDATA') or tempfile.gettempdir())/'KaiqueStudio'/'prev_cache'
+    def __init__(self,parent,title,hint,names,render,slug,sig=''):
         super().__init__(parent)
         self.setWindowTitle(title);self.resize(940,660);self.chosen=None
         lay=QVBoxLayout(self)
         lay.addWidget(label(hint))
         scroll=QScrollArea();scroll.setWidgetResizable(True);lay.addWidget(scroll,1)
         host=QWidget();grid=QGridLayout(host);grid.setSpacing(10);scroll.setWidget(host)
-        cache=Path(tempfile.gettempdir())/'kstudio_gallery';cache.mkdir(exist_ok=True)
+        self.CACHE.mkdir(parents=True,exist_ok=True)
         prog=QProgressDialog('Gerando prévias…','Cancelar',0,len(names),self)
         prog.setWindowModality(Qt.WindowModal);prog.setMinimumDuration(0)
         cols=4
         for i,name in enumerate(names):
             prog.setValue(i)
             if prog.wasCanceled():break
-            dest=cache/f'{slug}_{i}.jpg';pix=QPixmap()
-            try:
-                render(name,str(dest));pix=QPixmap(str(dest))
-            except Exception:
-                pass
+            # Cache entre sessões: o `sig` carrega a assinatura das entradas (take,
+            # tempo, cor…), então trocar o take invalida sozinho. Existe = reusa.
+            dest=self.CACHE/f'{slug}_{sig}_{i}.jpg';pix=QPixmap()
+            if dest.exists():pix=QPixmap(str(dest))
+            if pix.isNull():
+                try:render(name,str(dest));pix=QPixmap(str(dest))
+                except Exception:pass
             grid.addWidget(self._cell(name,pix),i//cols,i%cols)
         prog.setValue(len(names))
         lay.addWidget(row(button('Fechar',self.reject)))
@@ -186,6 +189,7 @@ class Studio(QMainWindow):
         self.words=QTableWidget(0,3);self.words.setHorizontalHeaderLabels(['Início','Fim','Palavra']);self.words.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch);c.addWidget(self.words)
         c.addWidget(button('Salvar palavras',self.sync_message));self.mode=QComboBox();self.mode.addItems(['Palavra ativa','Palavras-chave','Frase']);c.addWidget(self.mode)
         self.caption_style=QComboBox();self.caption_style.addItems(core.CAPTION_STYLES);c.addWidget(label('Animação da legenda (no modo Palavra ativa)'));c.addWidget(self.caption_style)
+        c.addWidget(button('🔤 Ver prévias dos estilos',self.open_caption_gallery))
         self.caption_pos=QComboBox();self.caption_pos.addItems(list(core.CAPTION_POSITIONS));c.addWidget(label('Posição da legenda na tela'));c.addWidget(self.caption_pos)
         self.caption_colors=QComboBox();self.caption_colors.addItems(core.CAPTION_COLOR_MODES);c.addWidget(label('Cores da legenda (Arco-íris / Alternada)'));c.addWidget(self.caption_colors)
         self.caption_emojis=QCheckBox('Emojis automáticos (fogo→🔥, dinheiro→💰…)');c.addWidget(self.caption_emojis)
@@ -599,10 +603,13 @@ class Studio(QMainWindow):
         if not clips:return self.info('Importe um take primeiro para ver as prévias.')
         c=clips[self.active] if 0<=self.active<len(clips) else clips[0]
         seconds=(c['in']+c['out'])/2
+        try:mtime=Path(c['source']).stat().st_mtime_ns
+        except OSError:mtime=0
+        sig=hashlib.md5(f"{c['source']}|{mtime}|{seconds:.2f}".encode()).hexdigest()[:10]
         render=lambda name,dest:core.preview_thumbnail(c['source'],dest,vf=core.FILTERS[name],seconds=seconds,width=240)
         dlg=EffectGalleryDialog(self,'Prévias dos filtros',
             'Toque no efeito que você quer — a miniatura é o SEU take com o filtro aplicado.',
-            list(core.FILTERS),render,'filter')
+            list(core.FILTERS),render,'filter',sig)
         if dlg.exec() and dlg.chosen:
             self.look.setCurrentText(dlg.chosen)
             self.status.setText(f'Filtro "{dlg.chosen}" escolhido na galeria.')
@@ -610,10 +617,19 @@ class Studio(QMainWindow):
         render=lambda name,dest:core.preview_transition(core.XFADE_MAP[name],dest,width=240)
         dlg=EffectGalleryDialog(self,'Prévias das transições',
             'A miniatura mostra o MOVIMENTO da transição no meio (A → B). Toque para escolher.',
-            list(core.XFADE_MAP),render,'trans')
+            list(core.XFADE_MAP),render,'trans','v1')
         if dlg.exec() and dlg.chosen:
             self.transition.setCurrentText(dlg.chosen)
             self.status.setText(f'Transição "{dlg.chosen}" escolhida na galeria.')
+    def open_caption_gallery(self):
+        accent=self.doc['style'].get('color','#C9FF63')
+        render=lambda name,dest:core.preview_caption(name,dest,accent=accent,width=300,height=170)
+        dlg=EffectGalleryDialog(self,'Prévias dos estilos de legenda',
+            'Cada estilo com uma palavra de exemplo. Toque para escolher (vale no modo "Palavra ativa").',
+            list(core.CAPTION_STYLES),render,'cap',accent.lstrip('#'))
+        if dlg.exec() and dlg.chosen:
+            self.caption_style.setCurrentText(dlg.chosen)
+            self.status.setText(f'Estilo de legenda "{dlg.chosen}" escolhido na galeria.')
     def add_video_overlay(self):
         if not self.doc['clips']:return self.info('Importe os takes primeiro.')
         exts=' '.join('*'+x for x in sorted(core.VIDEO_EXT))
