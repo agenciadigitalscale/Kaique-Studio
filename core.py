@@ -191,6 +191,40 @@ def run(args, cwd=None):
     return result
 
 
+def preview_thumbnail(source, dest, vf='', lut=None, seconds=1.0, width=320):
+    """Renderiza UM frame de `source` com o efeito aplicado — a miniatura da galeria.
+
+    É o que deixa a escolha de filtro/LUT deixar de ser no escuro: o mesmo `vf` que
+    o render usa é aplicado a um frame só e salvo pequeno. `vf` é a string do
+    `FILTERS` (vazia = Original); `lut` é um `.cube` opcional (vira `lut3d`, copiado
+    para um nome simples para escapar do caminho com `:` do Windows, igual ao
+    `assemble`). Determinístico: mesmo source+efeito+tempo dão a mesma imagem, então
+    a UI pode cachear pelo nome do efeito. Devolve o caminho do `dest` (JPG).
+    """
+    src = Path(source)
+    if not src.exists():
+        raise FileNotFoundError(str(src))
+    parts, cwd, tmp = [], None, None
+    if lut:
+        tmp = tempfile.mkdtemp(prefix='kstudio_prev_')
+        shutil.copyfile(lut, Path(tmp) / 'look.cube')
+        parts.append('lut3d=look.cube')
+        cwd = tmp
+    if vf:
+        parts.append(vf)
+    # Largura fixa, altura par mantendo a proporção — miniatura leve.
+    parts.append(f'scale={int(width)}:-2:flags=bicubic')
+    args = [ffmpeg(), '-y', '-ss', f'{max(0.0, float(seconds)):.3f}',
+            '-i', str(src.resolve()), '-frames:v', '1',
+            '-vf', ','.join(parts), '-q:v', '3', str(Path(dest).resolve())]
+    try:
+        run(args, cwd=cwd)
+    finally:
+        if tmp:
+            shutil.rmtree(tmp, ignore_errors=True)
+    return str(dest)
+
+
 def probe(path):
     import av
     with av.open(str(path)) as media:

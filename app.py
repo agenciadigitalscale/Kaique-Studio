@@ -1,17 +1,57 @@
 from __future__ import annotations
-import copy,json,sys,time,uuid
+import copy,json,sys,tempfile,time,uuid
 from pathlib import Path
 from PySide6.QtCore import Qt,QUrl,QTimer,Signal,QRectF,QSize
 from PySide6.QtGui import QPainter,QColor,QPen,QPixmap,QAction,QKeySequence,QShortcut
 from PySide6.QtWidgets import (QApplication,QMainWindow,QWidget,QVBoxLayout,QHBoxLayout,QSplitter,
  QLabel,QPushButton,QListWidget,QListWidgetItem,QAbstractItemView,QTabWidget,QLineEdit,QPlainTextEdit,
  QTableWidget,QTableWidgetItem,QHeaderView,QDoubleSpinBox,QComboBox,QSpinBox,QCheckBox,QScrollArea,
- QSlider,QFileDialog,QMessageBox,QProgressBar,QMenu,QInputDialog)
+ QSlider,QFileDialog,QMessageBox,QProgressBar,QMenu,QInputDialog,QDialog,QGridLayout,QProgressDialog)
 import library
 from PySide6.QtMultimedia import QMediaPlayer,QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
 import core,native,bridge
 from legacy_app import STYLE,STATE,BASE,Job,button,label,row,panel
+
+class EffectGalleryDialog(QDialog):
+    """Galeria de prévias dos filtros: cada um aplicado a um frame do take atual,
+    para escolher VENDO em vez de pelo nome. Renderiza uma vez (com barra de
+    progresso) e guarda em cache na sessão; clicar num efeito escolhe o filtro.
+    Uma prévia que falhar vira '(sem prévia)' sem derrubar a grade."""
+    def __init__(self,parent,source,seconds):
+        super().__init__(parent)
+        self.setWindowTitle('Prévias dos filtros');self.resize(940,660);self.chosen=None
+        lay=QVBoxLayout(self)
+        lay.addWidget(label('Toque no efeito que você quer — a miniatura é o SEU take com o filtro aplicado.'))
+        scroll=QScrollArea();scroll.setWidgetResizable(True);lay.addWidget(scroll,1)
+        host=QWidget();grid=QGridLayout(host);grid.setSpacing(10);scroll.setWidget(host)
+        names=list(core.FILTERS)
+        cache=Path(tempfile.gettempdir())/'kstudio_gallery';cache.mkdir(exist_ok=True)
+        prog=QProgressDialog('Gerando prévias…','Cancelar',0,len(names),self)
+        prog.setWindowModality(Qt.WindowModal);prog.setMinimumDuration(0)
+        cols=4
+        for i,name in enumerate(names):
+            prog.setValue(i)
+            if prog.wasCanceled():break
+            dest=cache/f'f{i}.jpg';pix=QPixmap()
+            try:
+                core.preview_thumbnail(source,str(dest),vf=core.FILTERS[name],seconds=seconds,width=240)
+                pix=QPixmap(str(dest))
+            except Exception:
+                pass
+            grid.addWidget(self._cell(name,pix),i//cols,i%cols)
+        prog.setValue(len(names))
+        lay.addWidget(row(button('Fechar',self.reject)))
+    def _cell(self,name,pix):
+        w=QWidget();v=QVBoxLayout(w);v.setContentsMargins(4,4,4,4);v.setSpacing(4)
+        thumb=QLabel();thumb.setAlignment(Qt.AlignCenter);thumb.setMinimumSize(240,150)
+        if not pix.isNull():thumb.setPixmap(pix)
+        else:thumb.setText('(sem prévia)')
+        v.addWidget(thumb);v.addWidget(button(name,lambda n=name:self._pick(n),True))
+        return w
+    def _pick(self,name):
+        self.chosen=name;self.accept()
+
 
 class ClipList(QListWidget):
     moved=Signal(int,int)
@@ -162,6 +202,7 @@ class Studio(QMainWindow):
         self.aspect=QComboBox();self.aspect.addItems(core.ASPECT_CHOICES);im.addWidget(label('Proporção da saída (Reels 9:16 · Feed 4:5 · YouTube 16:9)'));im.addWidget(self.aspect)
         self.quality=QComboBox();self.quality.addItems(core.QUALITY_CHOICES);im.addWidget(label('Resolução'));im.addWidget(self.quality)
         self.look=QComboBox();self.look.addItems(core.FILTERS);im.addWidget(label('Filtro'));im.addWidget(self.look)
+        im.addWidget(button('🖼️ Ver prévias dos filtros',self.open_filter_gallery))
         self.transition=QComboBox();self.transition.addItems(core.TRANSITIONS);im.addWidget(label('Transição entre clipes'));im.addWidget(self.transition)
         self.volume=QSlider(Qt.Horizontal);self.volume.setRange(0,100);im.addWidget(label('Volume da música'));im.addWidget(self.volume)
         self.music_fade=QDoubleSpinBox();self.music_fade.setRange(0,10);self.music_fade.setDecimals(1);self.music_fade.setSingleStep(0.5);self.music_fade.setSuffix(' s');im.addWidget(label('Fade da música (entrada/saída suave)'));im.addWidget(self.music_fade)
@@ -553,6 +594,15 @@ class Studio(QMainWindow):
         v=round(self.speed.value(),2)
         self.mutate(lambda p:p['clips'][self.active].__setitem__('speed',v))
         self.status.setText(f'Velocidade do take: {v}x (aplicada na exportação). Ctrl+Z desfaz.')
+    def open_filter_gallery(self):
+        clips=self.doc['clips']
+        if not clips:return self.info('Importe um take primeiro para ver as prévias.')
+        c=clips[self.active] if 0<=self.active<len(clips) else clips[0]
+        try:dlg=EffectGalleryDialog(self,c['source'],(c['in']+c['out'])/2)
+        except Exception as exc:return self.error(exc)
+        if dlg.exec() and dlg.chosen:
+            self.look.setCurrentText(dlg.chosen)
+            self.status.setText(f'Filtro "{dlg.chosen}" escolhido na galeria.')
     def add_video_overlay(self):
         if not self.doc['clips']:return self.info('Importe os takes primeiro.')
         exts=' '.join('*'+x for x in sorted(core.VIDEO_EXT))
