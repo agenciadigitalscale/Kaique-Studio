@@ -285,12 +285,19 @@ class Studio(QMainWindow):
         self.clips.setCurrentRow(self.active);self.clips.blockSignals(False)
         s=self.doc['style'];self.mode.setCurrentText(s['caption_mode']);self.caption_style.setCurrentText(s.get('caption_style','Realce'));self.caption_pos.setCurrentText(s.get('caption_pos','Embaixo'));self.caption_colors.setCurrentText(s.get('caption_colors','Única'));self.caption_emojis.setChecked(s.get('caption_emojis',False));self.keywords.setText(s['keywords']);self.font.setValue(s['font_size']);self.enabled.setChecked(s['captions_enabled']);self.look.setCurrentText(s['filter']);self.transition.setCurrentText(s['transition']);self.volume.setValue(round(s['music_volume']*100));self.music_fade.setValue(float(s.get('music_fade',1.0)));self.aspect.setCurrentText(s.get('aspect','Original'));self.quality.setCurrentText(s.get('quality','Alta (1080p)'));self.client.setText(self.doc['client']);self.script.setPlainText(self.doc['script'])
         self.effects.setText(f"Música: {Path(s['music']).name if s['music'] else 'nenhuma'}\nEfeitos sonoros: {len(s['sfx'])}\nLUT: {Path(s['lut']).name if s['lut'] else 'nenhuma'}\nTextos na tela: {len(s.get('titles',[]))}")
-        self.words.setRowCount(0)
-        if self.active>=0:
-            c=self.doc['clips'][self.active];self.ins.setValue(c['in']);self.outs.setValue(c['out']);self.speed.setValue(float(c.get('speed',1.0)));self.words.setRowCount(len(c['words']))
-            for i,w in enumerate(c['words']):
-                for j,value in enumerate([f"{w['start']:.3f}",f"{w['end']:.3f}",w['text']]):self.words.setItem(i,j,QTableWidgetItem(value))
+        self._refresh_active_clip()
         self.timeline.data=self.doc;self.timeline.active=self.active;self.timeline.update();self.loading=False
+    def _refresh_active_clip(self):
+        """Atualiza só o painel do clipe ativo (in/out/velocidade/palavras) — SEM
+        reconstruir a lista de takes nem os combos. É o que o avanço contínuo usa
+        para não piscar a cada troca de clipe."""
+        self.words.setRowCount(0)
+        if not 0<=self.active<len(self.doc['clips']):return
+        c=self.doc['clips'][self.active]
+        self.ins.setValue(c['in']);self.outs.setValue(c['out']);self.speed.setValue(float(c.get('speed',1.0)))
+        self.words.setRowCount(len(c['words']))
+        for i,w in enumerate(c['words']):
+            for j,value in enumerate([f"{w['start']:.3f}",f"{w['end']:.3f}",w['text']]):self.words.setItem(i,j,QTableWidgetItem(value))
     def mutate(self,fn):
         if self.job:return
         try:self.sync();candidate=copy.deepcopy(self.doc);fn(candidate);native.validate(candidate);self.checkpoint();self.doc=candidate;self.restore_ui();self.play_clip(self.active)
@@ -313,8 +320,19 @@ class Studio(QMainWindow):
             value=self.pending_seek;self.pending_seek=None;self.player.setPosition(value)
         if status==QMediaPlayer.EndOfMedia and not self.preview_mode:self.next_clip()
     def next_clip(self):
-        if self.active+1<len(self.doc['clips']):self.select(self.active+1);self.player.play()
-        else:self.player.pause();self.status.setText('Fim da sequência. ▶ recomeça a partir do clipe selecionado.')
+        n=self.active+1
+        if not n<len(self.doc['clips']):
+            self.player.pause();self.status.setText('Fim da sequência. ▶ recomeça a partir do clipe selecionado.');return
+        # Avanço LEVE: não chama select() (que faz sync + reconstrói a lista inteira,
+        # o que pisca a tela). Durante a reprodução não há edição pendente, então
+        # basta trocar o clipe ativo, o realce e o painel, e tocar o próximo.
+        self.loading=True
+        self.active=n
+        self.clips.blockSignals(True);self.clips.setCurrentRow(n);self.clips.blockSignals(False)
+        self.timeline.active=n;self.timeline.update()
+        self._refresh_active_clip()
+        self.loading=False
+        self.play_clip(n);self.player.play()
     def position(self,pos):
         if self.preview_mode:self.clock.setText(f'Prévia {pos/1000:.1f}s');return
         if not 0<=self.active<len(self.doc['clips']):return
