@@ -8,49 +8,100 @@ from PySide6.QtWidgets import (QApplication,QMainWindow,QWidget,QVBoxLayout,QHBo
  QTableWidget,QTableWidgetItem,QHeaderView,QDoubleSpinBox,QComboBox,QSpinBox,QCheckBox,QScrollArea,
  QSlider,QFileDialog,QMessageBox,QProgressBar,QMenu,QInputDialog,QDialog,QGridLayout,QProgressDialog)
 import library
+import favorites
 from PySide6.QtMultimedia import QMediaPlayer,QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
 import core,native,bridge
 from legacy_app import STYLE,STATE,BASE,Job,button,label,row,panel
 
 class EffectGalleryDialog(QDialog):
-    """Galeria de prévias: uma grade de miniaturas para escolher VENDO em vez de pelo
-    nome. Genérica — `render(name, dest)` desenha cada item (filtro no take atual,
-    transição num A→B sintético…). Renderiza com barra de progresso, guarda em cache
-    na sessão (`slug`); clicar escolhe. Prévia que falhar vira '(sem prévia)' sem
-    derrubar a grade."""
+    """Galeria de prévias estilo CapCut: coluna de CATEGORIAS à esquerda, BUSCA no
+    topo, FAVORITOS (⭐) e uma grade de miniaturas à direita. `render(name,dest)`
+    desenha cada item (filtro no take, transição num A→B, palavra no estilo). As
+    prévias são renderizadas UMA vez e guardadas em cache entre sessões (`slug`+`sig`,
+    que carrega a assinatura das entradas — trocar o take invalida sozinho), então
+    trocar de categoria ou digitar na busca só re-monta a grade (barato). `groups` =
+    {categoria:[nomes]} (senão vira uma categoria 'Todos'); `kind` liga os favoritos
+    persistidos. Prévia que falhar vira '(sem prévia)' sem derrubar a grade."""
     CACHE=Path(os.environ.get('LOCALAPPDATA') or tempfile.gettempdir())/'KaiqueStudio'/'prev_cache'
-    def __init__(self,parent,title,hint,names,render,slug,sig=''):
+    def __init__(self,parent,title,hint,names,render,slug,sig='',groups=None,kind=None):
         super().__init__(parent)
-        self.setWindowTitle(title);self.resize(940,660);self.chosen=None
-        lay=QVBoxLayout(self)
-        lay.addWidget(label(hint))
-        scroll=QScrollArea();scroll.setWidgetResizable(True);lay.addWidget(scroll,1)
-        host=QWidget();grid=QGridLayout(host);grid.setSpacing(10);scroll.setWidget(host)
+        self.setWindowTitle(title);self.resize(1040,700);self.chosen=None
+        self.names=list(names);self.nameset=set(self.names)
+        self.kind=kind;self.favs=favorites.load() if kind else {}
+        self.groups=groups or {'Todos':list(names)}
+        self.pixmaps={}
         self.CACHE.mkdir(parents=True,exist_ok=True)
-        prog=QProgressDialog('Gerando prévias…','Cancelar',0,len(names),self)
+        # 1) Renderiza TODAS as prévias uma vez (cache entre sessões via sig).
+        prog=QProgressDialog('Gerando prévias…','Cancelar',0,len(self.names),self)
         prog.setWindowModality(Qt.WindowModal);prog.setMinimumDuration(0)
-        cols=4
-        for i,name in enumerate(names):
+        for i,name in enumerate(self.names):
             prog.setValue(i)
             if prog.wasCanceled():break
-            # Cache entre sessões: o `sig` carrega a assinatura das entradas (take,
-            # tempo, cor…), então trocar o take invalida sozinho. Existe = reusa.
             dest=self.CACHE/f'{slug}_{sig}_{i}.jpg';pix=QPixmap()
             if dest.exists():pix=QPixmap(str(dest))
             if pix.isNull():
                 try:render(name,str(dest));pix=QPixmap(str(dest))
                 except Exception:pass
-            grid.addWidget(self._cell(name,pix),i//cols,i%cols)
-        prog.setValue(len(names))
+            self.pixmaps[name]=pix
+        prog.setValue(len(self.names))
+        # 2) Layout CapCut: topo (dica + busca), meio (categorias | grade), rodapé.
+        lay=QVBoxLayout(self);lay.addWidget(label(hint))
+        self.search=QLineEdit();self.search.setPlaceholderText('🔍  Buscar efeito…')
+        self.search.textChanged.connect(self._rebuild);lay.addWidget(self.search)
+        split=QSplitter();lay.addWidget(split,1)
+        self.cats=QListWidget();self.cats.setMaximumWidth(190)
+        if kind:self.cats.addItem('⭐ Favoritos')
+        for cat in self.groups:
+            if any(n in self.nameset for n in self.groups[cat]):self.cats.addItem(cat)
+        self.cats.addItem('Todos')
+        self.cats.currentRowChanged.connect(lambda *_:self._rebuild())
+        split.addWidget(self.cats)
+        self.scroll=QScrollArea();self.scroll.setWidgetResizable(True);split.addWidget(self.scroll)
+        split.setStretchFactor(1,1)
         lay.addWidget(row(button('Fechar',self.reject)))
-    def _cell(self,name,pix):
+        self.cats.setCurrentRow(0);self._rebuild()
+    def _visible_names(self):
+        item=self.cats.currentItem();cat=item.text() if item else 'Todos'
+        if cat=='⭐ Favoritos':
+            names=[n for n in self.names if favorites.is_favorite(self.favs,self.kind,n)]
+        elif cat=='Todos':
+            names=list(self.names)
+        else:
+            names=[n for n in self.groups.get(cat,[]) if n in self.nameset]
+        q=self.search.text().strip().lower()
+        if q:names=[n for n in names if q in n.lower()]
+        return names
+    def _rebuild(self):
+        host=QWidget();grid=QGridLayout(host);grid.setSpacing(10)
+        names=self._visible_names()
+        if not names:
+            grid.addWidget(label('Nada aqui ainda — marque favoritos com a ⭐ ou limpe a busca.'),0,0)
+        cols=4
+        for i,name in enumerate(names):
+            grid.addWidget(self._cell(name),i//cols,i%cols)
+        self.scroll.setWidget(host)
+    def _cell(self,name):
         w=QWidget();v=QVBoxLayout(w);v.setContentsMargins(4,4,4,4);v.setSpacing(4)
         thumb=QLabel();thumb.setAlignment(Qt.AlignCenter);thumb.setMinimumSize(240,150)
-        if not pix.isNull():thumb.setPixmap(pix)
+        pix=self.pixmaps.get(name)
+        if pix is not None and not pix.isNull():thumb.setPixmap(pix)
         else:thumb.setText('(sem prévia)')
-        v.addWidget(thumb);v.addWidget(button(name,lambda n=name:self._pick(n),True))
+        v.addWidget(thumb)
+        bar=QHBoxLayout();bar.setContentsMargins(0,0,0,0);bar.setSpacing(4)
+        bar.addWidget(button(name,lambda n=name:self._pick(n),True),1)
+        if self.kind:
+            on=favorites.is_favorite(self.favs,self.kind,name)
+            star=QPushButton('★' if on else '☆');star.setFixedWidth(34)
+            star.setToolTip('Tirar dos favoritos' if on else 'Favoritar')
+            star.clicked.connect(lambda _=False,n=name:self._toggle_fav(n));bar.addWidget(star)
+        holder=QWidget();holder.setLayout(bar);v.addWidget(holder)
         return w
+    def _toggle_fav(self,name):
+        self.favs,_=favorites.toggle(self.favs,self.kind,name)
+        try:favorites.save(self.favs)
+        except Exception:pass
+        self._rebuild()
     def _pick(self,name):
         self.chosen=name;self.accept()
 
@@ -627,7 +678,7 @@ class Studio(QMainWindow):
         render=lambda name,dest:core.preview_thumbnail(c['source'],dest,vf=core.FILTERS[name],seconds=seconds,width=240)
         dlg=EffectGalleryDialog(self,'Prévias dos filtros',
             'Toque no efeito que você quer — a miniatura é o SEU take com o filtro aplicado.',
-            list(core.FILTERS),render,'filter',sig)
+            list(core.FILTERS),render,'filter',sig,groups=core.FILTER_GROUPS,kind='filters')
         if dlg.exec() and dlg.chosen:
             self.look.setCurrentText(dlg.chosen)
             self.status.setText(f'Filtro "{dlg.chosen}" escolhido na galeria.')
@@ -635,7 +686,7 @@ class Studio(QMainWindow):
         render=lambda name,dest:core.preview_transition(core.XFADE_MAP[name],dest,width=240)
         dlg=EffectGalleryDialog(self,'Prévias das transições',
             'A miniatura mostra o MOVIMENTO da transição no meio (A → B). Toque para escolher.',
-            list(core.XFADE_MAP),render,'trans','v1')
+            list(core.XFADE_MAP),render,'trans','v1',groups=core.TRANSITION_GROUPS,kind='transitions')
         if dlg.exec() and dlg.chosen:
             self.transition.setCurrentText(dlg.chosen)
             self.status.setText(f'Transição "{dlg.chosen}" escolhida na galeria.')
@@ -644,7 +695,7 @@ class Studio(QMainWindow):
         render=lambda name,dest:core.preview_caption(name,dest,accent=accent,width=300,height=170)
         dlg=EffectGalleryDialog(self,'Prévias dos estilos de legenda',
             'Cada estilo com uma palavra de exemplo. Toque para escolher (vale no modo "Palavra ativa").',
-            list(core.CAPTION_STYLES),render,'cap',accent.lstrip('#'))
+            list(core.CAPTION_STYLES),render,'cap',accent.lstrip('#'),groups=core.CAPTION_GROUPS,kind='captions')
         if dlg.exec() and dlg.chosen:
             self.caption_style.setCurrentText(dlg.chosen)
             self.status.setText(f'Estilo de legenda "{dlg.chosen}" escolhido na galeria.')
