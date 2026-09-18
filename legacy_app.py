@@ -50,6 +50,17 @@ QSlider::handle:horizontal {background:#f0e7ff;width:14px;height:14px;margin:-5p
 QProgressBar {background:#241b33;border:0;border-radius:3px;text-align:center;height:6px;}
 QProgressBar::chunk {background:qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #8b5cf6,stop:1 #ec4899);border-radius:3px;}
 QCheckBox {spacing:8px;}
+QCheckBox::indicator,QRadioButton::indicator {width:16px;height:16px;border:1px solid #4a3a63;background:#140f1f;}
+QCheckBox::indicator {border-radius:5px;}
+QRadioButton::indicator {border-radius:8px;}
+QCheckBox::indicator:hover,QRadioButton::indicator:hover {border-color:#a78bfa;}
+QCheckBox::indicator:checked {border:0;background:qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #8b5cf6,stop:1 #ec4899);}
+QRadioButton::indicator:checked {border:0;background:#c084fc;}
+QMenu {background:#181322;border:1px solid #302743;border-radius:10px;padding:6px;}
+QMenu::item {padding:7px 22px 7px 14px;border-radius:7px;color:#ece9f5;}
+QMenu::item:selected {background:#33244d;color:#f0e7ff;}
+QMenu::separator {height:1px;background:#2a2340;margin:5px 8px;}
+QMenu::icon {padding-left:6px;}
 QSplitter::handle {background:#241b33;}
 QSplitter::handle:hover {background:#c084fc;}
 QSplitter::handle:horizontal {width:6px;}
