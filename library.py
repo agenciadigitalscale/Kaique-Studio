@@ -83,23 +83,30 @@ SOURCES = {
         ('Pixabay (livre)', 'https://pixabay.com/sound-effects/search/{q}/'),
         ('Freesound (CC)', 'https://freesound.org/search/?q={q}'),
         ('Mixkit (livre)', 'https://mixkit.co/free-sound-effects/{q}/'),
+        ('Uppbeat (livre)', 'https://uppbeat.io/search?q={q}'),
+        ('SoundBible (livre)', 'https://soundbible.com/search.php?q={q}'),
         ('Zapsplat', 'https://www.zapsplat.com/?s={q}'),
     ],
     'Memes': [
         ('Myinstants', 'https://www.myinstants.com/pt/search/?name={q}'),
         ('Pixabay (livre)', 'https://pixabay.com/sound-effects/search/{q}/'),
         ('Tenor (GIF)', 'https://tenor.com/search/{q}-gifs'),
+        ('Giphy (GIF)', 'https://giphy.com/search/{q}'),
+        ('Imgflip (memes)', 'https://imgflip.com/memesearch?q={q}'),
     ],
     'Músicas': [
         ('Pixabay Music (livre)', 'https://pixabay.com/music/search/{q}/'),
         ('Free Music Archive', 'https://freemusicarchive.org/search?quicksearch={q}'),
         ('Mixkit Music (livre)', 'https://mixkit.co/free-stock-music/{q}/'),
+        ('Uppbeat (livre)', 'https://uppbeat.io/search?q={q}'),
         ('Chosic (CC)', 'https://www.chosic.com/free-music/?keyword={q}'),
     ],
     'Ícones': [
         ('Flaticon', 'https://www.flaticon.com/search?word={q}'),
         ('Google Imagens (uso livre)', 'https://www.google.com/search?tbm=isch&tbs=sur:fmc&q={q}'),
         ('Openverse (CC)', 'https://openverse.org/search/?q={q}'),
+        ('SVG Repo (livre)', 'https://www.svgrepo.com/vectors/{q}/'),
+        ('Iconfinder (grátis)', 'https://www.iconfinder.com/search?q={q}&price=free'),
         ('Icons8', 'https://icons8.com/icons/set/{q}'),
         ('The Noun Project', 'https://thenounproject.com/search/?q={q}'),
     ],
@@ -109,9 +116,11 @@ SOURCES = {
         ('Pixabay (livre)', 'https://pixabay.com/images/search/{q}/'),
         ('Unsplash (livre)', 'https://unsplash.com/s/photos/{q}'),
         ('Pexels (livre)', 'https://www.pexels.com/search/{q}/'),
+        ('Burst (livre)', 'https://burst.shopify.com/photos/search?q={q}'),
     ],
     'LUTs': [
         ('FreshLUTs (grátis)', 'https://freshluts.com/luts?search={q}'),
+        ('Lutify.me (grátis)', 'https://lutify.me/?s={q}'),
     ],
 }
 

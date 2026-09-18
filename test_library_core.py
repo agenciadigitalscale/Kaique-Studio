@@ -137,6 +137,20 @@ class SearchSourceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             library.search_url('Músicas', '   ', 'Pixabay Music (livre)')
 
+    def test_every_source_template_is_https_with_query_slot(self):
+        # Invariante: toda fonte é https e tem o {q} — uma fonte sem {q} abriria a
+        # busca sem o termo (link quebrado silencioso).
+        for kind, lst in library.SOURCES.items():
+            for name, template in lst:
+                self.assertTrue(template.startswith('https://'), f'{kind}/{name} não é https')
+                self.assertIn('{q}', template, f'{kind}/{name} sem slot de busca')
+
+    def test_new_sources_present(self):
+        self.assertIn('Uppbeat (livre)', library.sources_for('Efeitos sonoros'))
+        self.assertIn('Giphy (GIF)', library.sources_for('Memes'))
+        self.assertIn('SVG Repo (livre)', library.sources_for('Ícones'))
+        self.assertIn('Burst (livre)', library.sources_for('Imagens'))
+
 
 class ImageImportTests(unittest.TestCase):
     def test_import_image_kinds(self):
