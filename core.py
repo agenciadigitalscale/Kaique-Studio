@@ -40,13 +40,23 @@ FILTERS = {
     'Âmbar': 'colorbalance=rs=0.06:gs=0.03:bs=-0.07,eq=saturation=1.12:gamma_r=1.04',
     'Vidro fosco': 'gblur=sigma=1.2,eq=brightness=0.03:contrast=0.98',
     'Clarão': 'eq=brightness=0.05:contrast=1.06,unsharp=3:3:0.4:3:3:0.0',
+    'Cyberpunk': 'curves=preset=strong_contrast,colorbalance=rs=0.1:bs=0.12:gm=-0.05,eq=saturation=1.25',
+    'Retrô 80s': 'colorbalance=rs=0.12:bs=0.12:gm=-0.08,eq=saturation=1.3:contrast=1.05',
+    'Noir': 'hue=s=0,curves=preset=strong_contrast,vignette=PI/4',
+    'HDR falso': 'unsharp=5:5:1.0:5:5:0.0,eq=contrast=1.14:saturation=1.18',
+    'Aqua': 'colorbalance=bs=0.12:gs=0.06:rs=-0.08,eq=saturation=1.1',
+    'Ensolarado': 'eq=brightness=0.08:saturation=1.18:gamma_r=1.04:gamma_g=1.03',
+    'Rosa millennial': 'colorbalance=rs=0.1:bs=0.04,eq=saturation=1.08:brightness=0.04',
+    'Cromado': 'eq=saturation=0.6:contrast=1.15,unsharp=5:5:0.6:5:5:0.0',
+    'Filme antigo': 'curves=preset=vintage,noise=alls=6:allf=t',
 }
 CAPTION_STYLES = ['Realce', 'Pop', 'Contorno', 'Salto', 'Zoom', 'Giro',
                   'Neon', 'Sombra', 'Contorno grosso', 'Pulsar',
                   'Elástico', 'Tremor', 'Balanço', 'Surgir', 'Ondular', 'Caixa',
                   'Sublinhado', 'Itálico pop', 'Girar 360', 'Neon pulsante',
                   'Contorno duplo', 'Encolher',
-                  'Piscar', 'Carimbo', 'Brilho', 'Salto duplo']
+                  'Piscar', 'Carimbo', 'Brilho', 'Salto duplo',
+                  'Batida', 'Vibrar', 'Peso', 'Estampa']
 
 
 def caption_active_tag(style, accent):
@@ -82,6 +92,10 @@ def caption_active_tag(style, accent):
         'Carimbo':         '{' + A + r'\fscx150\fscy150\frz-6\t(0,130,\fscx100\fscy100\frz0)}',
         'Brilho':          '{' + A + r'\bord1\3c' + accent + r'\blur3\t(0,150,\blur9)\t(150,300,\blur3)}',
         'Salto duplo':     '{' + A + r'\fscy70\t(0,90,\fscy120)\t(90,150,\fscy88)\t(150,220,\fscy100)}',
+        'Batida':          '{' + A + r'\fscx90\fscy90\t(0,70,\fscx118\fscy118)\t(70,150,\fscx100\fscy100)}',
+        'Vibrar':          '{' + A + r'\t(0,40,\fscx106\fscy106)\t(40,80,\fscx94\fscy94)\t(80,130,\fscx100\fscy100)}',
+        'Peso':            '{' + A + r'\b1\fscx106\fscy106\t(0,130,\fscx100\fscy100)}',
+        'Estampa':         '{' + A + r'\fscx130\fscy130\frz3\t(0,110,\fscx100\fscy100\frz0)}',
     }
     return tags.get(style, tags['Realce'])
 
@@ -906,6 +920,13 @@ XFADE_MAP = {
     'Abrir ▬':       'horzopen',
     'Abrir ▮':       'vertopen',
     'Diagonal ◤':    'diagtl',
+    'Diagonal ◢':    'diagbr',
+    'Fatiar ▬':      'hlslice',
+    'Fatiar ▮':      'vuslice',
+    'Espremer ▬':    'squeezeh',
+    'Recortar ●':    'circlecrop',
+    'Cinza':         'fadegrays',
+    'Dissolver granulado': 'dissolve',
 }
 TRANSITIONS = ['Nenhuma', 'Preto', 'Branco'] + list(XFADE_MAP)
 
