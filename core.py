@@ -931,6 +931,76 @@ XFADE_MAP = {
 TRANSITIONS = ['Nenhuma', 'Preto', 'Branco'] + list(XFADE_MAP)
 
 
+# ── Categorias dos efeitos (para a galeria estilo CapCut) ───────────────────
+# Cada efeito cai numa categoria; a galeria mostra as categorias numa coluna à
+# esquerda. Cobertura garantida por `effect_groups` (efeito sem categoria vai
+# para 'Mais'), e um teste confere que TODO efeito está em exatamente um grupo.
+
+def effect_groups(names, category_map, order, fallback='Mais'):
+    """Agrupa os efeitos por categoria, preservando a ordem de `order`.
+
+    Cobertura garantida: efeito fora do `category_map` cai em `fallback`. Devolve
+    um dict {categoria: [nomes]} — categorias de `order` primeiro, o resto (e o
+    fallback, se usado) ao fim. É a fonte da coluna de categorias da galeria.
+    """
+    groups = {}
+    for n in names:
+        groups.setdefault(category_map.get(n, fallback), []).append(n)
+    ordered = {c: groups[c] for c in order if c in groups}
+    for c, v in groups.items():
+        ordered.setdefault(c, v)
+    return ordered
+
+
+FILTER_CATEGORY = {
+    'Original': 'Populares', 'Vívido': 'Populares', 'Comida vibrante': 'Populares',
+    'Cyberpunk': 'Populares', 'Quente dourado': 'Cor & Vibe',
+    'Cinema': 'Cinema', 'Teal & Orange': 'Cinema', 'Dramático': 'Cinema',
+    'Noturno': 'Cinema', 'Cine frio': 'Cinema', 'Noir': 'Cinema',
+    'Sépia': 'Retrô', 'VHS retrô': 'Retrô', 'Desbotado': 'Retrô', 'Pastel': 'Retrô',
+    'Lomo': 'Retrô', 'Retrô 80s': 'Retrô', 'Rosa millennial': 'Retrô', 'Filme antigo': 'Retrô',
+    'Preto e branco': 'P&B', 'Cinza suave': 'P&B', 'P&B dramático': 'P&B', 'Cromado': 'P&B',
+    'Quente': 'Cor & Vibe', 'Frio': 'Cor & Vibe', 'Verão': 'Cor & Vibe', 'Outono': 'Cor & Vibe',
+    'Frio azulado': 'Cor & Vibe', 'Sunset': 'Cor & Vibe', 'Matinal': 'Cor & Vibe',
+    'Âmbar': 'Cor & Vibe', 'Aqua': 'Cor & Vibe', 'Ensolarado': 'Cor & Vibe',
+    'Contraste': 'Nitidez & Luz', 'Nítido': 'Nitidez & Luz', 'Suave': 'Nitidez & Luz',
+    'Alto contraste': 'Nitidez & Luz', 'Clarear': 'Nitidez & Luz', 'Escurecer': 'Nitidez & Luz',
+    'Nítido forte': 'Nitidez & Luz', 'HDR falso': 'Nitidez & Luz',
+    'Vinheta': 'Especiais', 'Vidro fosco': 'Especiais', 'Clarão': 'Especiais',
+}
+FILTER_ORDER = ['Populares', 'Cinema', 'Retrô', 'Cor & Vibe', 'P&B', 'Nitidez & Luz', 'Especiais']
+FILTER_GROUPS = effect_groups(list(FILTERS), FILTER_CATEGORY, FILTER_ORDER)
+
+TRANSITION_CATEGORY = {
+    'Nenhuma': 'Básico', 'Preto': 'Básico', 'Branco': 'Básico', 'Dissolve': 'Básico',
+    'Deslizar ◀': 'Deslizar', 'Deslizar ▶': 'Deslizar', 'Deslizar ▲': 'Deslizar',
+    'Deslizar ▼': 'Deslizar', 'Suave ▶': 'Deslizar',
+    'Varredura ▶': 'Varredura', 'Varredura ▲': 'Varredura', 'Varredura ◀': 'Varredura',
+    'Varredura ▼': 'Varredura', 'Abrir ▬': 'Varredura', 'Abrir ▮': 'Varredura',
+    'Fatiar ▬': 'Varredura', 'Fatiar ▮': 'Varredura',
+    'Círculo': 'Formas', 'Círculo fecha': 'Formas', 'Recortar ●': 'Formas',
+    'Radial': 'Formas', 'Diagonal ◤': 'Formas', 'Diagonal ◢': 'Formas',
+    'Zoom': 'Especiais', 'Pixelizar': 'Especiais', 'Espremer ▬': 'Especiais',
+    'Cinza': 'Especiais', 'Dissolver granulado': 'Especiais',
+}
+TRANSITION_ORDER = ['Básico', 'Deslizar', 'Varredura', 'Formas', 'Especiais']
+TRANSITION_GROUPS = effect_groups(TRANSITIONS, TRANSITION_CATEGORY, TRANSITION_ORDER)
+
+CAPTION_CATEGORY = {
+    'Realce': 'Populares', 'Pop': 'Populares',
+    'Salto': 'Escala', 'Zoom': 'Escala', 'Pulsar': 'Escala', 'Elástico': 'Escala',
+    'Itálico pop': 'Escala', 'Encolher': 'Escala', 'Carimbo': 'Escala', 'Salto duplo': 'Escala',
+    'Batida': 'Escala', 'Peso': 'Escala', 'Estampa': 'Escala',
+    'Giro': 'Movimento', 'Tremor': 'Movimento', 'Balanço': 'Movimento', 'Surgir': 'Movimento',
+    'Ondular': 'Movimento', 'Girar 360': 'Movimento', 'Piscar': 'Movimento', 'Vibrar': 'Movimento',
+    'Contorno': 'Contorno', 'Sombra': 'Contorno', 'Contorno grosso': 'Contorno',
+    'Caixa': 'Contorno', 'Sublinhado': 'Contorno', 'Contorno duplo': 'Contorno',
+    'Neon': 'Brilho', 'Neon pulsante': 'Brilho', 'Brilho': 'Brilho',
+}
+CAPTION_ORDER = ['Populares', 'Escala', 'Movimento', 'Contorno', 'Brilho']
+CAPTION_GROUPS = effect_groups(CAPTION_STYLES, CAPTION_CATEGORY, CAPTION_ORDER)
+
+
 def dissolve_shift(t, boundaries, overlap=DISSOLVE_OVERLAP):
     """Novo instante de um evento (palavra, efeito, texto) depois dos crossfades.
 
