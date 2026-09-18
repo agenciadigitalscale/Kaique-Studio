@@ -508,6 +508,47 @@ def polish_words(words):
     return out
 
 
+# Palavra que já termina em pontuação — não pontuamos de novo em cima do que o
+# Whisper (ou o próprio usuário) já colocou.
+_ENDS_PUNCT = re.compile(r'[.,!?…;:]["\')\]]*$')
+
+
+def punctuate_words(words, comma_gap=0.32, period_gap=0.72):
+    """Pontuação automática pela PAUSA da fala — vírgula na pausa curta, ponto na longa.
+
+    Heurística clássica de pós-processamento de fala: onde o locutor faz uma pausa
+    maior, entra um ponto; numa pausa média, uma vírgula. NÃO mexe em palavra que já
+    vem pontuada (o Whisper emite parte da pontuação em pt) — só preenche os buracos.
+    A última palavra ganha ponto. Função pura, devolve lista NOVA; rode `polish_words`
+    depois para capitalizar as frases que os pontos novos criaram.
+    """
+    out, n = [], len(words)
+    for i, w in enumerate(words):
+        text = w['text']
+        if text and not _ENDS_PUNCT.search(text):
+            if i == n - 1:
+                text += '.'
+            else:
+                gap = words[i + 1]['start'] - w['end']
+                if gap >= period_gap:
+                    text += '.'
+                elif gap >= comma_gap:
+                    text += ','
+        out.append(dict(w, text=text))
+    return out
+
+
+def enhance_transcript(words, punctuate=True):
+    """Pós-processa a transcrição: pontuação automática (opcional) + capitalização.
+
+    É o que o `transcribe` devolve. `punctuate=False` volta ao comportamento antigo
+    (só capitaliza), para quem preferir a pontuação crua do Whisper.
+    """
+    if punctuate:
+        words = punctuate_words(words)
+    return polish_words(words)
+
+
 # Palavras "vazias" (stopwords) do português — artigos, preposições, pronomes,
 # conjunções e verbos de apoio. Não são o que se quer destacar numa legenda; o
 # destaque automático guarda o resto (substantivos, verbos plenos, adjetivos).
@@ -649,7 +690,7 @@ def transcribe(source, progress):
                 words.append(dict(start=round(start,3),end=round(float(w.end),3),text=w.word.strip()))
     if not words:
         raise ValueError('Nenhuma fala detectada. Confira o áudio do vídeo.')
-    return polish_words(words)  # capitaliza o início de cada frase
+    return enhance_transcript(words)  # pontuação automática pela pausa + capitaliza
 
 
 def render(p, destination, progress=lambda s:None, preview=False):
