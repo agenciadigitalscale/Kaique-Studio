@@ -60,7 +60,7 @@ class LibraryPanel(QWidget):
         self.list=DragList();self.list.setSpacing(0);self.list.setUniformItemSizes(False);layout.addWidget(self.list,1)
         self.details=QLabel('');self.details.setObjectName('libhint');self.details.setWordWrap(True);layout.addWidget(self.details)
         controls=QHBoxLayout()
-        for title,fn in [('Ouvir / parar',self.listen),('★ Favoritar',self.favorite),('Usar no projeto',self.apply),('Importar arquivos',self.import_files)]:
+        for title,fn in [('Ouvir / parar',self.listen),('★ Favoritar',self.favorite),('Usar no projeto',self.apply),('🔊 Efeitos embutidos',self.add_builtin_sfx),('Importar arquivos',self.import_files)]:
             b=QPushButton(title);b.clicked.connect(fn);controls.addWidget(b)
         layout.addLayout(controls)
         online_row=QHBoxLayout()
@@ -140,6 +140,16 @@ class LibraryPanel(QWidget):
                 added=self.catalog.add(paths,kind,category);self.search.clear();self.kind.setCurrentText(kind);self.category.setCurrentText(category);self.only_favorites.setChecked(False);self.refresh()
                 self.details.setText(f'{len(added)} arquivos copiados para seu acervo permanente.')
             except Exception as exc:QMessageBox.warning(self,'Erro',str(exc))
+    def add_builtin_sfx(self):
+        """Gera o kit de efeitos sonoros embutidos e mostra no acervo."""
+        self.setCursor(Qt.WaitCursor)
+        try:novos=self.catalog.ensure_builtin_sfx()
+        except Exception as exc:
+            self.unsetCursor();QMessageBox.warning(self,'Efeitos embutidos',f'Não deu para gerar os efeitos: {exc}');return
+        self.unsetCursor()
+        self.search.clear();self.kind.setCurrentText('Efeitos sonoros');self.category.setCurrentText('Todas');self.only_favorites.setChecked(False);self.refresh()
+        if novos:QMessageBox.information(self,'Efeitos embutidos',f'{len(novos)} efeitos sonoros gerados e adicionados ao acervo. Clique num para ouvir.')
+        else:QMessageBox.information(self,'Efeitos embutidos','Os efeitos embutidos já estão no seu acervo.')
     def online(self):
         data=self.source.currentData()
         if not data:return

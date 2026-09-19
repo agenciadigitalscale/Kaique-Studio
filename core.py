@@ -1001,6 +1001,43 @@ CAPTION_ORDER = ['Populares', 'Escala', 'Movimento', 'Contorno', 'Brilho']
 CAPTION_GROUPS = effect_groups(CAPTION_STYLES, CAPTION_CATEGORY, CAPTION_ORDER)
 
 
+# ── Efeitos sonoros EMBUTIDOS (sintetizados no ffmpeg, sem direitos de terceiros) ──
+# O acervo de sons começava vazio — o CapCut já vem cheio. Em vez de baixar arquivo
+# de terceiros (direitos, link que morre), o app GERA um kit de efeitos com o próprio
+# ffmpeg: cada um é uma fonte lavfi + um envelope. Determinístico e royalty-free.
+# (nome: (categoria, fonte lavfi, filtro de áudio))
+SFX_BUILTIN = {
+    'Whoosh':        ('Movimento', 'anoisesrc=color=pink:d=0.6:a=0.9',  'highpass=f=250,lowpass=f=7000,afade=t=in:st=0:d=0.25,afade=t=out:st=0.3:d=0.3,volume=3'),
+    'Swoosh rápido': ('Movimento', 'anoisesrc=color=white:d=0.35:a=0.9', 'highpass=f=500,lowpass=f=9000,afade=t=in:st=0:d=0.12,afade=t=out:st=0.18:d=0.17,volume=3'),
+    'Pop':           ('Interface', 'sine=frequency=880:d=0.12',  'afade=t=out:st=0.02:d=0.1,volume=2'),
+    'Click':         ('Interface', 'sine=frequency=1600:d=0.05', 'afade=t=out:st=0.005:d=0.045'),
+    'Beep':          ('Interface', 'sine=frequency=1000:d=0.18', 'afade=t=in:st=0:d=0.01,afade=t=out:st=0.14:d=0.04'),
+    'Ding':          ('Interface', 'sine=frequency=1500:d=0.7',  'afade=t=out:st=0.05:d=0.65,volume=1.5'),
+    'Boop grave':    ('Interface', 'sine=frequency=320:d=0.2',   'afade=t=out:st=0.05:d=0.15'),
+    'Riser':         ('Suspense',  'aevalsrc=0.4*sin(2*PI*t*(250+1000*t)):d=1.4', 'afade=t=in:st=0:d=1.0,afade=t=out:st=1.25:d=0.15,volume=2'),
+    'Impacto':       ('Impacto',   'sine=frequency=70:d=0.5',    'afade=t=out:st=0.03:d=0.45,volume=4'),
+    'Suspense':      ('Suspense',  'sine=frequency=110:d=1.3',   'tremolo=f=6:d=0.6,afade=t=in:st=0:d=0.1,afade=t=out:st=1.0:d=0.3'),
+    'Glitch':        ('Interface', 'anoisesrc=color=white:d=0.3:a=0.7', 'aphaser=type=t:speed=2,afade=t=out:st=0.2:d=0.1,volume=2'),
+    'Sino tremido':  ('Interface', 'sine=frequency=1200:d=0.6',  'tremolo=f=8:d=0.8,afade=t=out:st=0.1:d=0.5,volume=1.5'),
+}
+
+
+def make_sfx(name, dest):
+    """Sintetiza um efeito sonoro embutido num .wav (o dest decide o formato).
+
+    A geração em si valida a fonte/filtro lavfi: `check=True` estoura se o ffmpeg
+    recusar. Determinístico — o mesmo nome dá sempre o mesmo som."""
+    if name not in SFX_BUILTIN:
+        raise ValueError(f'Efeito sonoro desconhecido: {name}')
+    _cat, src, af = SFX_BUILTIN[name]
+    cmd = [ffmpeg(), '-v', 'error', '-y', '-f', 'lavfi', '-i', src]
+    if af:
+        cmd += ['-af', af]
+    cmd += ['-ar', '44100', '-ac', '1', str(dest)]
+    subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return dest
+
+
 def dissolve_shift(t, boundaries, overlap=DISSOLVE_OVERLAP):
     """Novo instante de um evento (palavra, efeito, texto) depois dos crossfades.
 

@@ -377,6 +377,29 @@ class Catalog:
             raise
         return new
 
+    def ensure_builtin_sfx(self):
+        """Gera os efeitos sonoros EMBUTIDOS (ffmpeg) e cadastra os que faltam.
+
+        É o que enche a galeria de sons sem download — o CapCut já vem cheio, aqui
+        o app sintetiza. Idempotente: id estável por nome, não regera nem duplica o
+        que já está no acervo. Devolve os que foram adicionados agora."""
+        existentes = {e.get('id') for e in self.data['items']}
+        novos = []
+        for name, (category, _src, _af) in core.SFX_BUILTIN.items():
+            ident = 'sfx_' + core.normalized(name).replace(' ', '_')
+            if ident in existentes:
+                continue
+            target = self.root / (ident + '.wav')
+            if not target.exists():
+                core.make_sfx(name, target)
+            entry = dict(id=ident, title=name, kind='Efeitos sonoros',
+                         category=category, path=str(target.resolve()), builtin=True)
+            self.data['items'].append(entry)
+            novos.append(entry)
+        if novos:
+            self.save()
+        return novos
+
     def save_preset(self, name, style, category='Outros', description=''):
         """Guarda um combo de estilo como preset do usuário. Valida antes de gravar."""
         chosen = {k: style[k] for k in PRESET_KEYS if k in style}
